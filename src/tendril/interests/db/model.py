@@ -9,6 +9,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.orm import backref
 
 
 from tendril.utils.db import DeclBase
@@ -28,6 +29,18 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     info = Column(mutable_json_type(dbtype=JSONB))
 
     @declared_attr
+    def parent_id(cls):
+        return Column(Integer, ForeignKey('Interest.id'))
+
+    # @declared_attr
+    # def parent(cls):
+    #     return relationship("InterestModel", remote_side=[cls.id])
+
+    @declared_attr
+    def children(cls):
+        return relationship("InterestModel", backref=backref("parent", remote_side=[cls.id]))
+
+    @declared_attr
     def logs(cls):
         return relationship("InterestLogEntryModel", back_populates="interest")
 
@@ -36,6 +49,8 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
         "polymorphic_on": type
     }
 
+    # Name actually needs to be unique.
+    # Controllers need to be fixed to allow type based variation
     __table_args__ = (
         UniqueConstraint('type', 'name'),
     )

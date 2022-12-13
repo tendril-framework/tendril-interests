@@ -11,15 +11,20 @@ from .db.controller import get_role_users
 from .db.controller import get_user_roles
 from .db.controller import remove_role
 from .db.controller import remove_user
+from .db.controller import get_children
+from .db.controller import set_parent
+from .db.controller import get_parent
 
 
 class InterestBase(object):
     _model = InterestModel
     _roles = ['Owner', 'Member']
     _role_delegations = {'Owner': ['Member']}
+    _child_types = ['interest']
 
     def __init__(self, name):
         self._name = name
+        self.commit()
 
     @property
     def name(self):
@@ -95,6 +100,20 @@ class InterestBase(object):
 
     def remove_user(self, user):
         remove_user(self.id, user)
+
+    def get_parent(self):
+        return get_parent(self.name)
+
+    def set_parent(self, parent):
+        if isinstance(parent, self.__class__):
+            parent = parent.id
+        return set_parent(self.name, parent)
+
+    def all_children(self):
+        return get_children(self.name, self.type_name)
+
+    def children(self, child_type):
+        return [x for x in self.all_children() if x.type == child_type]
 
     def _commit_to_db(self):
         upsert_interest(self.name, self.info, type=self.type_name)

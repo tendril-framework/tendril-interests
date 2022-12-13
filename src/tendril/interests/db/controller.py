@@ -128,12 +128,10 @@ def get_membership(interest, user, role, session=None):
     interest_id = preprocess_interest(interest, session=session)
     user_id = preprocess_user(user, session=session)
     role_id = preprocess_role(role, session=session)
-    print(interest_id, user_id, role_id)
     q = session.query(InterestMembershipModel)\
         .filter_by(interest_id=interest_id)\
         .filter_by(user_id=user_id)\
         .filter_by(role_id=role_id)
-    print(q)
     return q.one()
 
 
@@ -152,3 +150,24 @@ def remove_user(interest, user, reference=None, session=None):
     roles = get_user_roles(interest_id, user_id, session=session)
     for role in roles:
         remove_role(interest_id, user_id, role, reference, session=session)
+
+
+@with_db
+def set_parent(interest, parent, type=None, session=None):
+    interest = get_interest(interest, session=session)
+    parent_id = preprocess_interest(parent)
+    interest.parent_id = parent_id
+    session.add(interest)
+    return interest
+
+
+@with_db
+def get_parent(interest, type=None, session=None):
+    interest = get_interest(interest, type, session=session)
+    return interest.parent
+
+
+@with_db
+def get_children(interest, type=None, session=None):
+    interest = get_interest(interest, type, session=session)
+    return interest.children
