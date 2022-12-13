@@ -49,9 +49,10 @@ def preprocess_role(role, session=None):
 
 @with_db
 def get_interest(name, type=None, session=None):
-    q = session.query(InterestModel).filter_by(name=name)
+    filters = [InterestModel.name == name]
     if type:
-        q.filter_by(type=type)
+        filters.append(InterestModel.type == type)
+    q = session.query(InterestModel).filter(*filters)
     return q.one()
 
 
@@ -104,9 +105,9 @@ def get_role_users(interest, role, session=None):
     interest_id = preprocess_interest(interest, session=session)
     role_id = preprocess_role(role, session=session)
 
-    q = session.query(User).join(InterestMembershipModel)
-    q.filter_by(interest_id=interest_id)
-    q.filter_by(role_id=role_id)
+    q = session.query(User).join(InterestMembershipModel)\
+        .filter_by(interest_id=interest_id)\
+        .filter_by(role_id=role_id)
     return q.all()
 
 
@@ -115,9 +116,10 @@ def get_user_roles(interest, user, session=None):
     interest_id = preprocess_interest(interest, session=session)
     user_id = preprocess_user(user, session=session)
 
-    q = session.query(InterestRoleModel.name).join(InterestMembershipModel)
-    q.filter_by(interest_id=interest_id)
-    q.filter_by(user_id=user_id)
+    q = session.query(InterestRoleModel.name).\
+        join(InterestMembershipModel).\
+        filter_by(interest_id=interest_id).\
+        filter_by(user_id=user_id)
     return q.all()[0]
 
 
@@ -126,11 +128,12 @@ def get_membership(interest, user, role, session=None):
     interest_id = preprocess_interest(interest, session=session)
     user_id = preprocess_user(user, session=session)
     role_id = preprocess_role(role, session=session)
-
-    q = session.query(InterestMembershipModel)
-    q.filter_by(interest_id=interest_id)
-    q.filter_by(user_id=user_id)
-    q.filter_by(role_id=role_id)
+    print(interest_id, user_id, role_id)
+    q = session.query(InterestMembershipModel)\
+        .filter_by(interest_id=interest_id)\
+        .filter_by(user_id=user_id)\
+        .filter_by(role_id=role_id)
+    print(q)
     return q.one()
 
 

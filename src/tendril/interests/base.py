@@ -16,7 +16,7 @@ from .db.controller import remove_user
 class InterestBase(object):
     _model = InterestModel
     _roles = ['Owner', 'Member']
-    _role_delegations = {'Owner': 'Member'}
+    _role_delegations = {'Owner': ['Member']}
 
     def __init__(self, name):
         self._name = name
@@ -58,11 +58,23 @@ class InterestBase(object):
     def remove_role(self, user, role, reference=None):
         remove_role(self.id, user, role, reference=reference)
 
-    def _get_effective_roles(self, role):
-        return [role] + self._role_delegations.get('role', [])
-
     def get_user_roles(self, user):
         return get_user_roles(self.id, user)
+
+    def _get_effective_roles(self, role):
+        return [role] + self._role_delegations.get(role, [])
+
+    def get_user_effective_roles(self, user):
+        rv = []
+        for role in self.get_user_roles(user):
+            rv.extend(self._get_effective_roles(role))
+        return rv
+
+    def get_role_users(self, role):
+        if role not in self._roles:
+            raise ValueError(f"{role} is not a recognized role for "
+                             f"{self.__class__.__name__}")
+        return get_role_users(self.id, role)
 
     def _get_accepted_roles(self, role):
         rv = [role]
@@ -71,8 +83,15 @@ class InterestBase(object):
                 rv.append(k)
         return rv
 
-    def get_role_users(self, role):
-        return get_role_users(self.id, role)
+    def get_role_accepted_users(self, role):
+        if role not in self._roles:
+            raise ValueError(f"{role} is not a recognized role for "
+                             f"{self.__class__.__name__}")
+        users = {}
+        for d_role in self._get_accepted_roles(role):
+            for user in get_role_users(self.id, d_role):
+                users[user.id] = user
+        return list(users.values())
 
     def remove_user(self, user):
         remove_user(self.id, user)
