@@ -20,11 +20,10 @@ class InterestBase(object):
     _model = InterestModel
     _roles = ['Owner', 'Member']
     _role_delegations = {'Owner': ['Member']}
-    _child_types = ['interest']
+    _child_types = {'interest': None}
 
     def __init__(self, name):
         self._name = name
-        self.commit()
 
     @property
     def name(self):
@@ -106,14 +105,24 @@ class InterestBase(object):
 
     def set_parent(self, parent):
         if isinstance(parent, self.__class__):
+            parent.clear_children_cache()
             parent = parent.id
         return set_parent(self.name, parent)
 
+    @cached_property
     def all_children(self):
         return get_children(self.name, self.type_name)
 
+    def clear_children_cache(self):
+        if 'all_children' in self.__dict__:
+            del self.all_children
+
     def children(self, child_type):
-        return [x for x in self.all_children() if x.type == child_type]
+        child_class = self._child_types.get(child_type)
+        if not child_class:
+            return [x for x in self.all_children if x.type == child_type]
+        else:
+            return [child_class(x.name) for x in self.all_children if x.type == child_type]
 
     def _commit_to_db(self):
         upsert_interest(self.name, self.info, type=self.type_name)
