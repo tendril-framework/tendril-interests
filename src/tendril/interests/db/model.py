@@ -23,8 +23,12 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestModel(DeclBase, BaseMixin, TimestampMixin):
-    _type_name = "interest"
-    type = Column(String(50), nullable=False, default=_type_name)
+    type_name = "interest"
+    roles = ['Owner', 'Member']
+    role_delegations = {'Owner': ['Member']}
+    allowed_children = ['interest']
+
+    type = Column(String(50), nullable=False, default=type_name)
     name = Column(String(255), nullable=False)
     info = Column(mutable_json_type(dbtype=JSONB))
 
@@ -45,7 +49,7 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
         return relationship("InterestLogEntryModel", back_populates="interest")
 
     __mapper_args__ = {
-        "polymorphic_identity": _type_name,
+        "polymorphic_identity": type_name,
         "polymorphic_on": type
     }
 

@@ -15,12 +15,12 @@ from .db.controller import get_children
 from .db.controller import set_parent
 from .db.controller import get_parent
 
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEFAULT)
+
 
 class InterestBase(object):
     _model = InterestModel
-    _roles = ['Owner', 'Member']
-    _role_delegations = {'Owner': ['Member']}
-    _child_types = {'interest': None}
 
     def __init__(self, name):
         self._name = name
@@ -31,7 +31,7 @@ class InterestBase(object):
 
     @property
     def type_name(self):
-        return self._model._type_name
+        return self._model.type_name
 
     @property
     def ident(self):
@@ -54,7 +54,11 @@ class InterestBase(object):
 
     @property
     def roles(self):
-        return self._roles
+        return self._model.roles
+
+    @property
+    def allowed_children(self):
+        return self._model.allowed_children
 
     def assign_role(self, user, role, reference=None):
         assign_role(self.id, user, role, reference=reference)
@@ -66,7 +70,7 @@ class InterestBase(object):
         return get_user_roles(self.id, user)
 
     def _get_effective_roles(self, role):
-        return [role] + self._role_delegations.get(role, [])
+        return [role] + self._model.role_delegations.get(role, [])
 
     def get_user_effective_roles(self, user):
         rv = []
@@ -75,20 +79,20 @@ class InterestBase(object):
         return rv
 
     def get_role_users(self, role):
-        if role not in self._roles:
+        if role not in self._model.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         return get_role_users(self.id, role)
 
     def _get_accepted_roles(self, role):
         rv = [role]
-        for k, v in self._role_delegations.items():
+        for k, v in self._model.role_delegations.items():
             if role in v:
                 rv.append(k)
         return rv
 
     def get_role_accepted_users(self, role):
-        if role not in self._roles:
+        if role not in self._model.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         users = {}
@@ -104,9 +108,15 @@ class InterestBase(object):
         return get_parent(self.name)
 
     def set_parent(self, parent):
-        if isinstance(parent, self.__class__):
+        if not isinstance(parent, self.__class__):
+            parent = get_interest(parent)
+        if '*' not in parent.allowed_children and \
+                self.type_name not in parent.allowed_children:
             parent.clear_children_cache()
             parent = parent.id
+        else:
+            raise TypeError(f"Parent to type {parent.type_name} does not "
+                            f"accept children of type {self.type_name}")
         return set_parent(self.name, parent)
 
     @cached_property
@@ -118,7 +128,7 @@ class InterestBase(object):
             del self.all_children
 
     def children(self, child_type):
-        child_class = self._child_types.get(child_type)
+        child_class = _child_types.get(child_type)
         if not child_class:
             return [x for x in self.all_children if x.type == child_type]
         else:
@@ -132,9 +142,17 @@ class InterestBase(object):
         return self
 
 
+_child_types = {}
+
+
+def register_child_type(name, cls):
+    logger.info(f"Registering {cls} to handle Interest type '{name}'")
+    _child_types[name] = cls
+
+
 def init():
     register_interest_role('Owner', "Owner of an Interest")
     register_interest_role('Member', "Member of an Interest")
-
+    register_child_type('interest', None)
 
 init()
