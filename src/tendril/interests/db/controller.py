@@ -171,3 +171,18 @@ def get_parent(interest, type=None, session=None):
 def get_children(interest, type=None, session=None):
     interest = get_interest(interest, type, session=session)
     return interest.children
+
+
+@with_db
+def get_artefacts():
+    pass
+
+
+@with_db
+def add_artefact():
+    pass
+
+
+@with_db
+def remove_artefact():
+    pass

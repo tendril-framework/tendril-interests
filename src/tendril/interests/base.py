@@ -15,6 +15,7 @@ from .db.controller import get_children
 from .db.controller import set_parent
 from .db.controller import get_parent
 
+from tendril.utils.db import with_db
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
@@ -134,6 +135,31 @@ class InterestBase(object):
         else:
             return [child_class(x.name) for x in self.all_children if x.type == child_type]
 
+    @with_db
+    def add_artefact(self, artefact, session=None):
+        self.clear_artefact_cache()
+
+    @with_db
+    def remove_artefact(self, artefact, session=None):
+        self.clear_artefact_cache()
+
+    @with_db
+    def transfer_artefact(self, artefact, interest, session=None):
+        self.remove_artefact(artefact, session=session)
+        interest.add_artefact(artefact, session=session)
+
+    @cached_property
+    def all_artefacts(self):
+        pass
+
+    def clear_artefact_cache(self):
+        if 'all_artefacts' in self.__dict__:
+            del self.all_artefacts
+
+    @with_db
+    def artefacts(self, artefact_type, session=None):
+        pass
+
     def _commit_to_db(self):
         upsert_interest(self.name, self.info, type=self.type_name)
 
@@ -154,5 +180,6 @@ def init():
     register_interest_role('Owner', "Owner of an Interest")
     register_interest_role('Member', "Member of an Interest")
     register_child_type('interest', None)
+
 
 init()
