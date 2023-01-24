@@ -128,7 +128,7 @@ class InterestBase(object):
             del self.all_children
 
     def children(self, child_type):
-        child_class = _child_types.get(child_type)
+        child_class = _interest_types.get(child_type)
         if not child_class:
             return [x for x in self.all_children if x.type == child_type]
         else:
@@ -142,17 +142,17 @@ class InterestBase(object):
         return self
 
 
-_child_types = {}
+_interest_types = {}
 
 
-def register_child_type(name, cls):
+def register_interest_type(name, cls):
     logger.info(f"Registering {cls} to handle Interest type '{name}'")
-    _child_types[name] = cls
+    _interest_types[name] = cls
 
 
 def init():
     register_interest_role('Owner', "Owner of an Interest")
     register_interest_role('Member', "Member of an Interest")
-    register_child_type('interest', None)
+    register_interest_type('interest', None)
 
 init()
