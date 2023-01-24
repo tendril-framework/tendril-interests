@@ -11,12 +11,10 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import backref
 
-
 from tendril.utils.db import DeclBase
 from tendril.utils.db import BaseMixin
 from tendril.utils.db import TimestampMixin
 from tendril.authn.db.mixins import UserMixin
-
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
@@ -27,6 +25,7 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     roles = ['Owner', 'Member']
     role_delegations = {'Owner': ['Member']}
     allowed_children = ['interest']
+    recognized_artefacts = {}
 
     type = Column(String(50), nullable=False, default=type_name)
     name = Column(String(255), nullable=False)
@@ -45,6 +44,10 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
         return relationship("InterestModel", backref=backref("parent", remote_side=[cls.id]))
 
     @declared_attr
+    def artefacts(cls):
+        return relationship('ArtefactModel', back_populates="interest")
+
+    @declared_attr
     def logs(cls):
         return relationship("InterestLogEntryModel", back_populates="interest")
 
@@ -58,6 +61,10 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     __table_args__ = (
         UniqueConstraint('type', 'name'),
     )
+
+    @property
+    def recognized_artefact_labels(self):
+        return {x.label: x for x in self.recognized_artefacts}
 
 
 class InterestLogEntryModel(DeclBase, BaseMixin, TimestampMixin, UserMixin):
