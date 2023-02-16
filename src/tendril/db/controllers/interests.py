@@ -6,10 +6,10 @@ from tendril.utils.db import with_db
 from tendril.authn.db.model import User
 from tendril.authn.db.controller import preprocess_user
 
-from .model import InterestModel
-from .model import InterestRoleModel
-from .model import InterestMembershipModel
-from .model import InterestLogEntryModel
+from tendril.db.models.interests import InterestModel
+from tendril.db.models.interests import InterestRoleModel
+from tendril.db.models.interests import InterestMembershipModel
+from tendril.db.models.interests import InterestLogEntryModel
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)

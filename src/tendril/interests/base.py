@@ -1,19 +1,18 @@
 
 
 from functools import cached_property
-from .db.model import InterestModel
+from tendril.db.models.interests import InterestModel
 
-from .db.controller import get_interest
-from .db.controller import register_interest_role
-from .db.controller import upsert_interest
-from .db.controller import assign_role
-from .db.controller import get_role_users
-from .db.controller import get_user_roles
-from .db.controller import remove_role
-from .db.controller import remove_user
-from .db.controller import get_children
-from .db.controller import set_parent
-from .db.controller import get_parent
+from tendril.db.controllers.interests import get_interest
+from tendril.db.controllers.interests import upsert_interest
+from tendril.db.controllers.interests import assign_role
+from tendril.db.controllers.interests import get_role_users
+from tendril.db.controllers.interests import get_user_roles
+from tendril.db.controllers.interests import remove_role
+from tendril.db.controllers.interests import remove_user
+from tendril.db.controllers.interests import get_children
+from tendril.db.controllers.interests import set_parent
+from tendril.db.controllers.interests import get_parent
 
 from tendril.utils.db import with_db
 from tendril.utils import log
@@ -129,7 +128,8 @@ class InterestBase(object):
             del self.all_children
 
     def children(self, child_type):
-        child_class = _interest_types.get(child_type)
+        from tendril import interests
+        child_class = getattr(interests, child_type)
         if not child_class:
             return [x for x in self.all_children if x.type == child_type]
         else:
@@ -168,18 +168,7 @@ class InterestBase(object):
         return self
 
 
-_interest_types = {}
-
-
-def register_interest_type(name, cls):
-    logger.info(f"Registering {cls} to handle Interest type '{name}'")
-    _interest_types[name] = cls
-
-
-def init():
-    register_interest_role('Owner', "Owner of an Interest")
-    register_interest_role('Member', "Member of an Interest")
-    register_interest_type('interest', None)
-
-
-init()
+def load(manager):
+    manager.register_interest_role(name='Owner', doc="Owner of an Interest")
+    manager.register_interest_role(name='Member', doc="Member of an Interest")
+    manager.register_interest_type('Interest', InterestBase)
