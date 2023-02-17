@@ -26,6 +26,10 @@ class InterestBase(object):
         self._name = name
 
     @property
+    def model(self):
+        return self._model
+
+    @property
     def name(self):
         return self._name
 
@@ -171,4 +175,4 @@ class InterestBase(object):
 def load(manager):
     manager.register_interest_role(name='Owner', doc="Owner of an Interest")
     manager.register_interest_role(name='Member', doc="Member of an Interest")
-    manager.register_interest_type('Interest', InterestBase)
+    manager.register_interest_type('InterestBase', InterestBase)

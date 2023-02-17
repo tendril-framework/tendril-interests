@@ -63,6 +63,16 @@ class InterestManager(object):
         self._roles[name] = register_interest_role(name, doc, session=session)
 
     @property
+    def platform_roles(self):
+        return self._roles.keys()
+
+    @property
+    def platform_role_delegations(self):
+        # TODO Make this actually generic
+        return {"Owner": self._roles.keys(),
+                "Administrator": self._roles.keys()}
+
+    @property
     def types(self):
         return self._types
 
