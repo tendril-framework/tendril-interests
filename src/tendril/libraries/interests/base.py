@@ -7,11 +7,34 @@ from functools import cached_property
 from tendril.config import AUDIT_PATH
 from tendril.utils.fsutils import VersionedOutputFile
 
+from tendril.utils.db import with_db
+from tendril.db.controllers.interests import get_interests
+from tendril.db.controllers.interests import get_interest
 from tendril.interests import InterestBase
 
 
 class GenericInterestLibrary(object):
     _interest_class = InterestBase
+
+    def idents(self):
+        pass
+
+    @with_db
+    def items(self, session=None):
+        return [self._interest_class(x) for x in
+                get_interests(type=self._interest_class.model, session=session)]
+
+    @with_db
+    def item(self, id=None, name=None, session=None):
+        return get_interest(id=id, name=name, type=self._interest_class, session=session)
+
+    @with_db
+    def add_item(self, item, session=None):
+        pass
+
+    @with_db
+    def delete_item(self, id=None, name=None, session=None):
+        raise NotImplementedError
 
     # def export_audit(self, name):
     #     auditfname = os.path.join(

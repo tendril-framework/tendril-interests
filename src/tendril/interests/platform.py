@@ -5,7 +5,7 @@ from tendril.db.models.platform import PlatformModel
 
 
 class Platform(InterestBase):
-    _model = PlatformModel
+    model = PlatformModel
 
 
 def load(manager):

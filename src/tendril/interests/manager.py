@@ -38,6 +38,7 @@ class InterestManager(object):
     def __init__(self, prefix):
         self._prefix = prefix
         self._types = {}
+        self._type_codes = {}
         self._roles = {}
         self._docs = []
         self._load_interests()
@@ -76,6 +77,12 @@ class InterestManager(object):
     def types(self):
         return self._types
 
+    def finalize(self):
+        self._type_codes = {
+                x.model.type_name: x
+                for x in self._types.values()
+        }
+
     def __getattr__(self, item):
         if item == '__file__':
             return None
@@ -86,6 +93,8 @@ class InterestManager(object):
         if item == '__all__':
             return list(self._types.keys()) + \
                    ['doc_render']
+        if item == 'type_codes':
+            return self._type_codes
         return self._types[item]
 
     def doc_render(self):

@@ -1,7 +1,10 @@
 
 
+from tendril.libraries import interests
+
+
 def _generate_routers():
-    pass
+    return []
 
 
 routers = _generate_routers()

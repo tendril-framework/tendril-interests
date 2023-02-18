@@ -20,37 +20,41 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestBase(object):
-    _model = InterestModel
+    model = InterestModel
 
     def __init__(self, name):
-        self._name = name
-
-    @property
-    def model(self):
-        return self._model
+        if isinstance(name, InterestModel):
+            self._model_instance = name
+            self._name = None
+        else:
+            self._name = name
+            self._model_instance: InterestModel = self._commit_to_db()
 
     @property
     def name(self):
-        return self._name
+        if self._name:
+            return self._name
+        else:
+            return self._model_instance.name
 
     @property
     def type_name(self):
-        return self._model.type_name
+        return self.model.type_name
 
     @property
     def ident(self):
-        return self.__class__.__name__ + self.name
+        return f"{self.__class__.__name__} {self.name}"
 
     def _info(self):
         return {}
 
-    @cached_property
+    @property
     def id(self):
-        return get_interest(self.name, self.type_name).id
+        return self._model_instance.id
 
     @property
     def memberships(self):
-        return get_interest(self.name, self.type_name).memberships
+        return self._model_instance.memberships
 
     @property
     def info(self):
@@ -58,62 +62,71 @@ class InterestBase(object):
 
     @property
     def roles(self):
-        return self._model.roles
+        return self._model_instance.roles
 
     @property
     def allowed_children(self):
-        return self._model.allowed_children
+        return self._model_instance.allowed_children
 
-    def assign_role(self, user, role, reference=None):
-        assign_role(self.id, user, role, reference=reference)
+    @with_db
+    def assign_role(self, user, role, reference=None, session=None):
+        assign_role(self.id, user, role, reference=reference, session=session)
 
-    def remove_role(self, user, role, reference=None):
-        remove_role(self.id, user, role, reference=reference)
+    @with_db
+    def remove_role(self, user, role, reference=None, session=None):
+        remove_role(self.id, user, role, reference=reference, session=session)
 
-    def get_user_roles(self, user):
-        return get_user_roles(self.id, user)
+    @with_db
+    def get_user_roles(self, user, session=None):
+        return get_user_roles(self.id, user, session=session)
 
     def _get_effective_roles(self, role):
-        return [role] + self._model.role_delegations.get(role, [])
+        return [role] + self.model.role_delegations.get(role, [])
 
-    def get_user_effective_roles(self, user):
+    @with_db
+    def get_user_effective_roles(self, user, session=None):
         rv = []
-        for role in self.get_user_roles(user):
+        for role in self.get_user_roles(user, session=session):
             rv.extend(self._get_effective_roles(role))
         return rv
 
-    def get_role_users(self, role):
-        if role not in self._model.roles:
+    @with_db
+    def get_role_users(self, role, session=None):
+        if role not in self._model_instance.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
-        return get_role_users(self.id, role)
+        return get_role_users(self.id, role, session=session)
 
     def _get_accepted_roles(self, role):
         rv = [role]
-        for k, v in self._model.role_delegations.items():
+        for k, v in self._model_instance.role_delegations.items():
             if role in v:
                 rv.append(k)
         return rv
 
-    def get_role_accepted_users(self, role):
-        if role not in self._model.roles:
+    @with_db
+    def get_role_accepted_users(self, role, session=None):
+        if role not in self._model_instance.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         users = {}
         for d_role in self._get_accepted_roles(role):
-            for user in get_role_users(self.id, d_role):
+            for user in get_role_users(self.id, d_role, session=session):
                 users[user.id] = user
-        return list(users.values())
+        return users
 
-    def remove_user(self, user):
-        remove_user(self.id, user)
+    @with_db
+    def remove_user(self, user, session=None):
+        remove_user(self.id, user, session=session)
 
-    def get_parent(self):
-        return get_parent(self.name)
+    @with_db
+    def get_parent(self, session=None):
+        return get_parent(self.name, session=session)
 
-    def set_parent(self, parent):
+    @with_db
+    def set_parent(self, parent, session=None):
         if not isinstance(parent, self.__class__):
-            parent = get_interest(parent)
+            parent = get_interest(parent, session=session)
         if '*' not in parent.allowed_children and \
                 self.type_name not in parent.allowed_children:
             parent.clear_children_cache()
@@ -121,7 +134,7 @@ class InterestBase(object):
         else:
             raise TypeError(f"Parent to type {parent.type_name} does not "
                             f"accept children of type {self.type_name}")
-        return set_parent(self.name, parent)
+        return set_parent(self.name, parent, session=session)
 
     @cached_property
     def all_children(self):
@@ -164,8 +177,9 @@ class InterestBase(object):
     def artefacts(self, artefact_type, session=None):
         pass
 
-    def _commit_to_db(self):
-        upsert_interest(self.name, self.info, type=self.type_name)
+    @with_db
+    def _commit_to_db(self, session=None):
+        self._model_instance = upsert_interest(self.name, self.info, type=self.type_name, session=session)
 
     def commit(self):
         self._commit_to_db()

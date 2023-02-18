@@ -27,6 +27,10 @@ class InterestLibraryManager(object):
     def install_library(self, name, library):
         logger.info("Installing interest library '{0}'".format(name))
         self._libraries[name] = library
+        
+    @property
+    def defined_types(self):
+        return self._libraries.keys()
 
     def install_exc_class(self, name, exc_class):
         self._exc_classes[name] = exc_class

@@ -47,12 +47,36 @@ def preprocess_role(role, session=None):
         return role.id
 
 
+def _type_discriminator(type):
+    if not type:
+        return InterestModel
+    if hasattr(type, 'model'):
+        type = getattr(type, 'model')
+    if issubclass(type, InterestModel):
+        qmodel = type
+    else:
+        from tendril.interests import type_codes
+        qmodel = type_codes[type].model
+    return qmodel
+
+
 @with_db
-def get_interest(name, type=None, session=None):
-    filters = [InterestModel.name == name]
-    if type:
-        filters.append(InterestModel.type == type)
-    q = session.query(InterestModel).filter(*filters)
+def get_interests(type=None, session=None):
+    filters = []
+    qmodel = _type_discriminator(type)
+    q = session.query(qmodel).filter(*filters)
+    return q.all()
+
+
+@with_db
+def get_interest(id=None, name=None, type=None, session=None):
+    filters = []
+    qmodel = _type_discriminator(type)
+    if id:
+        filters.append(qmodel.id == id)
+    elif name:
+        filters.append(qmodel.name == name)
+    q = session.query(qmodel).filter(*filters)
     return q.one()
 
 
