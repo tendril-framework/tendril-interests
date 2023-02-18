@@ -30,7 +30,7 @@ class InterestLibraryManager(object):
         
     @property
     def defined_types(self):
-        return self._libraries.keys()
+        return list(self._libraries.keys())
 
     def install_exc_class(self, name, exc_class):
         self._exc_classes[name] = exc_class

@@ -39,6 +39,7 @@ class InterestManager(object):
         self._prefix = prefix
         self._types = {}
         self._type_codes = {}
+        self._type_spec = {}
         self._roles = {}
         self._docs = []
         self._load_interests()
@@ -65,7 +66,7 @@ class InterestManager(object):
 
     @property
     def platform_roles(self):
-        return self._roles.keys()
+        return list(self._roles.keys())
 
     @property
     def platform_role_delegations(self):
@@ -83,6 +84,13 @@ class InterestManager(object):
                 for x in self._types.values()
         }
 
+        self._type_spec = {
+            key:
+                {'roles': cls.model().roles,
+                 'allowed_children': cls.model.allowed_children}
+            for key, cls in self._type_codes.items()
+        }
+
     def __getattr__(self, item):
         if item == '__file__':
             return None
@@ -95,6 +103,8 @@ class InterestManager(object):
                    ['doc_render']
         if item == 'type_codes':
             return self._type_codes
+        if item == 'type_spec':
+            return self._type_spec
         return self._types[item]
 
     def doc_render(self):

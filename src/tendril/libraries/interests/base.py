@@ -11,10 +11,15 @@ from tendril.utils.db import with_db
 from tendril.db.controllers.interests import get_interests
 from tendril.db.controllers.interests import get_interest
 from tendril.interests import InterestBase
+from tendril.apiserver.templates.interests import InterestRouterGenerator
 
 
 class GenericInterestLibrary(object):
     _interest_class = InterestBase
+
+    @property
+    def type_name(self):
+        return self._interest_class.model.type_name
 
     def idents(self):
         pass
@@ -35,6 +40,9 @@ class GenericInterestLibrary(object):
     @with_db
     def delete_item(self, id=None, name=None, session=None):
         raise NotImplementedError
+
+    def api_generator(self):
+        return InterestRouterGenerator(self)
 
     # def export_audit(self, name):
     #     auditfname = os.path.join(
