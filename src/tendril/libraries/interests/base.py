@@ -15,23 +15,24 @@ from tendril.apiserver.templates.interests import InterestRouterGenerator
 
 
 class GenericInterestLibrary(object):
-    _interest_class = InterestBase
+    interest_class = InterestBase
 
     @property
     def type_name(self):
-        return self._interest_class.model.type_name
+        return self.interest_class.model.type_name
 
     def idents(self):
         pass
 
     @with_db
     def items(self, session=None):
-        return [self._interest_class(x) for x in
-                get_interests(type=self._interest_class.model, session=session)]
+        return [self.interest_class(x) for x in
+                get_interests(type=self.interest_class, session=session)]
 
     @with_db
     def item(self, id=None, name=None, session=None):
-        return get_interest(id=id, name=name, type=self._interest_class, session=session)
+        return self.interest_class(
+            get_interest(id=id, name=name, type=self.interest_class, session=session))
 
     @with_db
     def add_item(self, item, session=None):

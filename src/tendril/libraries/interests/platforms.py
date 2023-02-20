@@ -6,7 +6,7 @@ from tendril.libraries.interests.manager import InterestLibraryManager
 
 
 class PlatformLibrary(GenericInterestLibrary):
-    _interest_class = Platform
+    interest_class = Platform
 
 
 def load(manager: InterestLibraryManager):

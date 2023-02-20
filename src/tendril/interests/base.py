@@ -1,6 +1,11 @@
 
 
+from typing import List
 from functools import cached_property
+
+from tendril.authn.users import UserStubTMixin
+from tendril.utils.pydantic import TendrilTBaseModel
+
 from tendril.db.models.interests import InterestModel
 
 from tendril.db.controllers.interests import get_interest
@@ -19,8 +24,16 @@ from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
 
+class InterestBaseTModel(TendrilTBaseModel):
+    name: str
+    type: str
+    id: int
+    info: dict
+
+
 class InterestBase(object):
     model = InterestModel
+    tmodel = InterestBaseTModel
 
     def __init__(self, name):
         if isinstance(name, InterestModel):
@@ -176,6 +189,15 @@ class InterestBase(object):
     @with_db
     def artefacts(self, artefact_type, session=None):
         pass
+
+    @with_db
+    def export(self, session=None):
+        return {
+            'name': self.name,
+            'type': self.type_name,
+            'id': self.id,
+            'info': self.info,
+        }
 
     @with_db
     def _commit_to_db(self, session=None):
