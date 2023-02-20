@@ -30,7 +30,8 @@ def read(fname):
 
 core_dependencies = [
     'tendril-utils-db',
-    'tendril-auth'
+    'tendril-auth',
+    'networkx',
 ]
 
 install_requires = core_dependencies + ['wheel']

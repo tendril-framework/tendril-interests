@@ -24,6 +24,7 @@ Tendril Interest Manager (:mod:`tendril.interest.manager`)
 
 
 import importlib
+import networkx
 
 from tendril.utils.db import with_db
 from tendril.utils.versions import get_namespace_package_names
@@ -40,6 +41,9 @@ class InterestManager(object):
         self._types = {}
         self._type_codes = {}
         self._type_spec = {}
+        self.type_tree = None
+        self.possible_parents = {}
+        self.possible_paths = {}
         self._roles = {}
         self._docs = []
         self._load_interests()
@@ -78,6 +82,36 @@ class InterestManager(object):
     def types(self):
         return self._types
 
+    def _create_tree_edges(self):
+        """Creates a graph from the spec dict
+        """
+        list_of_edges = []
+        for item in self._type_spec.keys():
+            allowed_children = self._type_spec[item]['allowed_children']
+            if allowed_children == ["*"]:
+                allowed_children = [itemtype for itemtype in self._type_spec.keys()]
+            for child in allowed_children:
+                list_of_edges.append((item, child))
+        return list_of_edges
+
+    def _generate_tree(self):
+        """Takes a list of edges and produces a graph. Allows for circular reference
+        """
+        interest_tree = networkx.DiGraph()
+        interest_tree.add_edges_from(self._create_tree_edges())
+        return interest_tree
+
+    def _possible_type_parents(self, type_name):
+        paths = networkx.all_simple_paths(self.type_tree, "platform", type_name)
+        parents = []
+        [parents.append(x[-2])
+         for x in sorted(paths, key=lambda x: len(x))
+         if x[-2] not in parents]
+        return parents
+
+    def _possible_type_paths(self, type_name):
+        return list(networkx.all_simple_paths(self.type_tree, "platform", type_name))
+
     def finalize(self):
         self._type_codes = {
                 x.model.type_name: x
@@ -90,6 +124,14 @@ class InterestManager(object):
                  'allowed_children': cls.model.allowed_children}
             for key, cls in self._type_codes.items()
         }
+
+        self.type_tree = self._generate_tree()
+
+        self.possible_parents = {x: self._possible_type_parents(x)
+                                 for x in self._type_codes}
+
+        self.possible_paths = {x: self._possible_type_paths(x)
+                               for x in self._type_codes}
 
     def __getattr__(self, item):
         if item == '__file__':
