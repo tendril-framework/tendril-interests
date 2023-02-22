@@ -18,9 +18,9 @@ from tendril.utils.db import get_session
 from .base import ApiRouterGenerator
 
 
-class InterestRouterGenerator(ApiRouterGenerator):
+class InterestLibraryRouterGenerator(ApiRouterGenerator):
     def __init__(self, actual):
-        super(InterestRouterGenerator, self).__init__()
+        super(InterestLibraryRouterGenerator, self).__init__()
         self._actual = actual
 
     async def items(self, request: Request,
@@ -36,6 +36,30 @@ class InterestRouterGenerator(ApiRouterGenerator):
         with get_session() as session:
             rv = self._actual.item(id=id, session=session).export()
         return rv
+
+    async def create_item(self):
+        raise NotImplementedError
+
+    async def update_item(self):
+        raise NotImplementedError
+
+    async def delete_item(self):
+        raise NotImplementedError
+
+    async def item_members(self):
+        raise NotImplementedError
+
+    async def item_user_role(self):
+        raise NotImplementedError
+
+    async def item_children(self):
+        raise NotImplementedError
+
+    async def itme_children_of_type(self):
+        raise NotImplementedError
+
+    async def add_item_child(self):
+        raise NotImplementedError
 
     def generate(self, name):
         desc = f'{name} Interest API'

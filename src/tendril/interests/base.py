@@ -3,7 +3,7 @@
 from typing import List
 from functools import cached_property
 
-from tendril.authn.users import UserStubTMixin
+from tendril.authn.pydantic import UserStubTMixin
 from tendril.utils.pydantic import TendrilTBaseModel
 
 from tendril.db.models.interests import InterestModel
@@ -65,9 +65,10 @@ class InterestBase(object):
     def id(self):
         return self._model_instance.id
 
-    @property
-    def memberships(self):
-        return self._model_instance.memberships
+    @with_db
+    def memberships(self, session=None):
+        session.add(self._model_instance)
+        return self._model_instance.memberships.all()
 
     @property
     def info(self):
@@ -75,7 +76,7 @@ class InterestBase(object):
 
     @property
     def roles(self):
-        return self._model_instance.roles
+        return self._model_instance.role_spec.roles
 
     @property
     def allowed_children(self):
@@ -94,7 +95,7 @@ class InterestBase(object):
         return get_user_roles(self.id, user, session=session)
 
     def _get_effective_roles(self, role):
-        return [role] + self.model.role_delegations.get(role, [])
+        return [role] + self.model.role_spec.role_delegations.get(role, [])
 
     @with_db
     def get_user_effective_roles(self, user, session=None):
@@ -105,21 +106,21 @@ class InterestBase(object):
 
     @with_db
     def get_role_users(self, role, session=None):
-        if role not in self._model_instance.roles:
+        if role not in self._model_instance.role_spec.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         return get_role_users(self.id, role, session=session)
 
     def _get_accepted_roles(self, role):
         rv = [role]
-        for k, v in self._model_instance.role_delegations.items():
+        for k, v in self._model_instance.role_spec.role_delegations.items():
             if role in v:
                 rv.append(k)
         return rv
 
     @with_db
     def get_role_accepted_users(self, role, session=None):
-        if role not in self._model_instance.roles:
+        if role not in self._model_instance.role_spec.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         users = {}
@@ -142,16 +143,16 @@ class InterestBase(object):
             parent = get_interest(parent, session=session)
         if '*' not in parent.allowed_children and \
                 self.type_name not in parent.allowed_children:
+            raise TypeError(f"Interest of type {parent.type_name} does not "
+                            f"accept children of type {self.type_name}")
+        else:
             parent.clear_children_cache()
             parent = parent.id
-        else:
-            raise TypeError(f"Parent to type {parent.type_name} does not "
-                            f"accept children of type {self.type_name}")
         return set_parent(self.name, parent, session=session)
 
     @cached_property
     def all_children(self):
-        return get_children(self.name, self.type_name)
+        return get_children(self.id, self.type_name)
 
     def clear_children_cache(self):
         if 'all_children' in self.__dict__:

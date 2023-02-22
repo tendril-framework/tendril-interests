@@ -11,6 +11,8 @@ from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import backref
 
+from tendril.authz.roles.interests import InterestRoleSpec
+
 from tendril.utils.db import DeclBase
 from tendril.utils.db import BaseMixin
 from tendril.utils.db import TimestampMixin
@@ -22,14 +24,17 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     type_name = "interest"
-    roles = ['Owner', 'Member']
-    role_delegations = {'Owner': ['Member']}
+
     allowed_children = ['interest']
     recognized_artefacts = {}
+
+    role_spec = InterestRoleSpec()
 
     type = Column(String(50), nullable=False, default=type_name)
     name = Column(String(255), nullable=False)
     info = Column(mutable_json_type(dbtype=JSONB))
+
+    memberships = relationship('InterestModel', uselist=False, back_populates='interest', lazy='dynamic')
 
     @declared_attr
     def parent_id(cls):
@@ -38,6 +43,10 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     # @declared_attr
     # def parent(cls):
     #     return relationship("InterestModel", remote_side=[cls.id])
+
+    @declared_attr
+    def memberships(cls):
+        return relationship("InterestMembershipModel", back_populates='interest', lazy='dynamic')
 
     @declared_attr
     def children(cls):
@@ -78,6 +87,7 @@ class InterestLogEntryModel(DeclBase, BaseMixin, TimestampMixin, UserMixin):
 class InterestRoleModel(DeclBase, BaseMixin):
     name = Column(String(50), nullable=False, unique=True)
     description = Column(String(255))
+    memberships = relationship("InterestMembershipModel", back_populates='role', lazy='dynamic')
 
 
 class InterestMembershipModel(DeclBase, BaseMixin, TimestampMixin):
@@ -88,6 +98,6 @@ class InterestMembershipModel(DeclBase, BaseMixin, TimestampMixin):
     reference = Column(mutable_json_type(dbtype=JSONB))
 
     UniqueConstraint('user_id', 'interest_id', 'role_id')
-    relationship('User', uselist=False, backref='memberships', lazy='dynamic')
-    relationship('InterestModel', uselist=False, backref='memberships', lazy='dynamic')
-    relationship('InterestRoleModel', uselist=False, backref='memberships', lazy='dynamic')
+    user = relationship('User', uselist=False)
+    interest = relationship('InterestModel', uselist=False, back_populates='memberships')
+    role = relationship('InterestRoleModel', uselist=False, back_populates='memberships')

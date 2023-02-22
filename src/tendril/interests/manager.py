@@ -44,6 +44,7 @@ class InterestManager(object):
         self.type_tree = None
         self.possible_parents = {}
         self.possible_paths = {}
+        self.all_actions = {}
         self._roles = {}
         self._docs = []
         self._load_interests()
@@ -67,16 +68,6 @@ class InterestManager(object):
     def register_interest_role(self, name, doc=None, session=None):
         logger.info(f"Registering Interest Role '{name}'")
         self._roles[name] = register_interest_role(name, doc, session=session)
-
-    @property
-    def platform_roles(self):
-        return list(self._roles.keys())
-
-    @property
-    def platform_role_delegations(self):
-        # TODO Make this actually generic
-        return {"Owner": self._roles.keys(),
-                "Administrator": self._roles.keys()}
 
     @property
     def types(self):
@@ -120,7 +111,7 @@ class InterestManager(object):
 
         self._type_spec = {
             key:
-                {'roles': cls.model().roles,
+                {'roles': cls.model().role_spec.roles,
                  'allowed_children': cls.model.allowed_children}
             for key, cls in self._type_codes.items()
         }
@@ -132,6 +123,11 @@ class InterestManager(object):
 
         self.possible_paths = {x: self._possible_type_paths(x)
                                for x in self._type_codes}
+
+        [self.all_actions.update(
+            {f'{t.model.type_name}:{a}': r
+             for a, r in t.model.role_spec.actions.items()})
+            for t in self._types.values()]
 
     def __getattr__(self, item):
         if item == '__file__':

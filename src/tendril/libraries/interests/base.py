@@ -11,7 +11,7 @@ from tendril.utils.db import with_db
 from tendril.db.controllers.interests import get_interests
 from tendril.db.controllers.interests import get_interest
 from tendril.interests import InterestBase
-from tendril.apiserver.templates.interests import InterestRouterGenerator
+from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
 
 class GenericInterestLibrary(object):
@@ -25,7 +25,7 @@ class GenericInterestLibrary(object):
         pass
 
     @with_db
-    def items(self, session=None):
+    def items(self, user=None, session=None):
         return [self.interest_class(x) for x in
                 get_interests(type=self.interest_class, session=session)]
 
@@ -43,7 +43,7 @@ class GenericInterestLibrary(object):
         raise NotImplementedError
 
     def api_generator(self):
-        return InterestRouterGenerator(self)
+        return InterestLibraryRouterGenerator(self)
 
     # def export_audit(self, name):
     #     auditfname = os.path.join(
