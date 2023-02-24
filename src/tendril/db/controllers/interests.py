@@ -50,13 +50,13 @@ def preprocess_role(role, session=None):
 def _type_discriminator(type):
     if not type:
         return InterestModel
-    if hasattr(type, 'model'):
+    if isinstance(type, str):
+        from tendril.interests import type_codes
+        return type_codes[type].model
+    elif hasattr(type, 'model'):
         type = getattr(type, 'model')
     if issubclass(type, InterestModel):
         qmodel = type
-    else:
-        from tendril.interests import type_codes
-        qmodel = type_codes[type].model
     return qmodel
 
 
@@ -145,6 +145,20 @@ def get_user_roles(interest, user, session=None):
         filter_by(interest_id=interest_id).\
         filter_by(user_id=user_id)
     return q.all()[0]
+
+
+@with_db
+def get_user_memberships(user, interest_type=None, session=None):
+    user_id = preprocess_user(user, session=session)
+    q = session.query(InterestMembershipModel).\
+        filter_by(user_id=user_id)
+
+    if interest_type:
+        qmodel = _type_discriminator(interest_type)
+        q = q.join(InterestModel).\
+        filter_by(type=qmodel.type_name)
+
+    return q.all()
 
 
 @with_db

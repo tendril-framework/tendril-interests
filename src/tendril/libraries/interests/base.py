@@ -8,8 +8,10 @@ from tendril.config import AUDIT_PATH
 from tendril.utils.fsutils import VersionedOutputFile
 
 from tendril.utils.db import with_db
-from tendril.db.controllers.interests import get_interests
+
 from tendril.db.controllers.interests import get_interest
+from tendril.db.controllers.interests import get_interests
+from tendril.db.controllers.interests import get_user_memberships
 from tendril.interests import InterestBase
 from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
@@ -26,8 +28,14 @@ class GenericInterestLibrary(object):
 
     @with_db
     def items(self, user=None, session=None):
-        return [self.interest_class(x) for x in
-                get_interests(type=self.interest_class, session=session)]
+        if not user:
+            return [self.interest_class(x) for x in
+                    get_interests(type=self.interest_class, session=session)]
+        else:
+            return [self.interest_class(x.interest) for x in
+                    get_user_memberships(user,
+                                         interest_type=self.interest_class.model,
+                                         session=session)]
 
     @with_db
     def item(self, id=None, name=None, session=None):

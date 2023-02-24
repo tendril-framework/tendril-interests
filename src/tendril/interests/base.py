@@ -85,6 +85,7 @@ class InterestBase(object):
     @with_db
     def assign_role(self, user, role, reference=None, session=None):
         assign_role(self.id, user, role, reference=reference, session=session)
+        # assign scopes
 
     @with_db
     def remove_role(self, user, role, reference=None, session=None):
@@ -94,37 +95,27 @@ class InterestBase(object):
     def get_user_roles(self, user, session=None):
         return get_user_roles(self.id, user, session=session)
 
-    def _get_effective_roles(self, role):
-        return [role] + self.model.role_spec.role_delegations.get(role, [])
-
     @with_db
     def get_user_effective_roles(self, user, session=None):
         rv = []
         for role in self.get_user_roles(user, session=session):
-            rv.extend(self._get_effective_roles(role))
+            rv.extend(self.model.role_spec.get_effective_roles(role))
         return rv
 
     @with_db
     def get_role_users(self, role, session=None):
-        if role not in self._model_instance.role_spec.roles:
+        if role not in self.model.role_spec.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         return get_role_users(self.id, role, session=session)
 
-    def _get_accepted_roles(self, role):
-        rv = [role]
-        for k, v in self._model_instance.role_spec.role_delegations.items():
-            if role in v:
-                rv.append(k)
-        return rv
-
     @with_db
     def get_role_accepted_users(self, role, session=None):
-        if role not in self._model_instance.role_spec.roles:
+        if role not in self.model.role_spec.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
         users = {}
-        for d_role in self._get_accepted_roles(role):
+        for d_role in self.model.role_spec.get_accepted_roles(role):
             for user in get_role_users(self.id, d_role, session=session):
                 users[user.id] = user
         return users

@@ -24,14 +24,14 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         self._actual = actual
 
     async def items(self, request: Request,
-                    # user: AuthUserModel = auth_spec(),
+                    user: AuthUserModel = auth_spec(),
                     ):
         with get_session() as session:
-            rv = [x.export() for x in self._actual.items(session=session)]
+            rv = [x.export() for x in self._actual.items(user=user, session=session)]
         return rv
 
     async def item(self, request: Request, id: int,
-                   # user: AuthUserModel = auth_spec()
+                   user: AuthUserModel = auth_spec()
                    ):
         with get_session() as session:
             rv = self._actual.item(id=id, session=session).export()
@@ -64,9 +64,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     def generate(self, name):
         desc = f'{name} Interest API'
         read_router = APIRouter(prefix=f'/{name}', tags=[desc],
-                                # dependencies=[Depends(authn_dependency),
-                                #               auth_spec(scopes=['interests:common'])]
-                                )
+                                dependencies=[Depends(authn_dependency)])
         read_router.add_api_route("", self.items, methods=["GET"],
                                   response_model=List[self._actual.interest_class.tmodel])
         read_router.add_api_route("/{id}", self.item, methods=["GET"],
