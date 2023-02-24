@@ -10,7 +10,7 @@ from tendril.authn.users import auth_spec
 from tendril.authn.users import AuthUserModel
 from tendril.authn.users import authn_dependency
 
-from tendril.authn.users import UserStubTMixin
+from tendril.authn.pydantic import UserStubTMixin
 from tendril.utils.pydantic import TendrilTBaseModel
 
 from tendril.utils.db import get_session
