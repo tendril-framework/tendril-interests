@@ -71,3 +71,12 @@ class InterestRoleSpec(object):
                 scopes.update(interests.type_codes[child_type].
                               model.role_spec.get_role_scopes(r))
         return scopes
+
+    def get_role_permissions(self, role):
+        return set([a for a, (r, s) in self.actions.items() if r == role])
+
+    def get_roles_permissions(self, roles):
+        allowed = set()
+        for role in roles:
+            allowed.update(self.get_role_permissions(role))
+        return allowed

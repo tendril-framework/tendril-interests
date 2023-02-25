@@ -25,16 +25,26 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
 
     async def items(self, request: Request,
                     user: AuthUserModel = auth_spec(),
+                    include_roles: bool = False,
+                    include_permissions: bool = False,
                     ):
         with get_session() as session:
-            rv = [x.export() for x in self._actual.items(user=user, session=session)]
+            rv = [x.export(user=user, session=session,
+                           include_roles=include_roles,
+                           include_permissions=include_permissions)
+                  for x in self._actual.items(user=user, session=session)]
         return rv
 
     async def item(self, request: Request, id: int,
-                   user: AuthUserModel = auth_spec()
+                   user: AuthUserModel = auth_spec(),
+                   include_roles: bool = False,
+                   include_permissions: bool = False,
                    ):
         with get_session() as session:
-            rv = self._actual.item(id=id, session=session).export()
+            rv = self._actual.item(id=id, session=session).\
+                export(user=user, session=session,
+                       include_roles=include_roles,
+                       include_permissions=include_permissions)
         return rv
 
     async def create_item(self):

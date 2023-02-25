@@ -1,6 +1,7 @@
 
 
 from typing import List
+from typing import Optional
 from functools import cached_property
 
 from tendril.authn.pydantic import UserStubTMixin
@@ -29,6 +30,8 @@ class InterestBaseTModel(TendrilTBaseModel):
     type: str
     id: int
     info: dict
+    roles: Optional[List[str]]
+    permissions: Optional[List[str]]
 
 
 class InterestBase(object):
@@ -187,13 +190,22 @@ class InterestBase(object):
         pass
 
     @with_db
-    def export(self, session=None):
-        return {
+    def export(self, session=None, user=None,
+               include_permissions=False,
+               include_roles=False):
+        rv = {
             'name': self.name,
             'type': self.type_name,
             'id': self.id,
             'info': self.info,
         }
+        if include_roles or include_permissions:
+            user_roles = self.get_user_effective_roles(user, session=session)
+        if include_roles:
+            rv['roles'] = user_roles
+        if include_permissions:
+            rv['permissions'] = self.model.role_spec.get_roles_permissions(user_roles)
+        return rv
 
     @with_db
     def _commit_to_db(self, session=None):
