@@ -3,13 +3,14 @@
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import Integer
-from sqlalchemy_json import mutable_json_type
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy import UniqueConstraint
 from sqlalchemy.orm import backref
+from sqlalchemy.orm import relationship
+from sqlalchemy.orm import mapped_column
+from sqlalchemy_json import mutable_json_type
+from sqlalchemy.ext.declarative import declared_attr
+from sqlalchemy.dialects.postgresql import JSONB
 
 from tendril.authz.roles.interests import InterestRoleSpec
 
@@ -20,6 +21,11 @@ from tendril.authn.db.mixins import UserMixin
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
+
+
+class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):
+    parent_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
+    child_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
 
 
 class InterestModel(DeclBase, BaseMixin, TimestampMixin):
@@ -34,12 +40,6 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     name = Column(String(255), nullable=False)
     info = Column(mutable_json_type(dbtype=JSONB))
 
-    memberships = relationship('InterestModel', uselist=False, back_populates='interest', lazy='dynamic')
-
-    @declared_attr
-    def parent_id(cls):
-        return Column(Integer, ForeignKey('Interest.id'))
-
     # @declared_attr
     # def parent(cls):
     #     return relationship("InterestModel", remote_side=[cls.id])
@@ -50,7 +50,10 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
 
     @declared_attr
     def children(cls):
-        return relationship("InterestModel", backref=backref("parent", remote_side=[cls.id]))
+        return relationship("InterestModel", secondary="InterestAssociation",
+                            primaryjoin="InterestModel.id == InterestAssociationModel.parent_id",
+                            secondaryjoin="InterestModel.id == InterestAssociationModel.child_id",
+                            backref="parents")
 
     @declared_attr
     def artefacts(cls):
