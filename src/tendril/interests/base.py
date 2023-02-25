@@ -85,10 +85,12 @@ class InterestBase(object):
     @with_db
     def assign_role(self, user, role, reference=None, session=None):
         assign_role(self.id, user, role, reference=reference, session=session)
-        # assign scopes
+        scopes_assignable = self.model.role_spec.get_role_scopes(role)
+        print(scopes_assignable)
 
     @with_db
     def remove_role(self, user, role, reference=None, session=None):
+        # TODO Scopes should be recalculated and pruned here.
         remove_role(self.id, user, role, reference=reference, session=session)
 
     @with_db
@@ -100,6 +102,8 @@ class InterestBase(object):
         rv = []
         for role in self.get_user_roles(user, session=session):
             rv.extend(self.model.role_spec.get_effective_roles(role))
+        if self.model.role_spec.inherits_from_parent:
+            pass
         return rv
 
     @with_db
