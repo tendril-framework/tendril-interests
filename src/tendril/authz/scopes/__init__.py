@@ -6,3 +6,4 @@ _manager = ScopesManager(prefix='tendril.authz.scopes')
 
 import sys
 sys.modules[__name__] = _manager
+_manager.finalize()
