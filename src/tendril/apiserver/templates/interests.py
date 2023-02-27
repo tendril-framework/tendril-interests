@@ -47,6 +47,9 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                        include_permissions=include_permissions)
         return rv
 
+    async def item_members(self):
+        raise NotImplementedError
+
     async def create_item(self):
         raise NotImplementedError
 
@@ -54,12 +57,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         raise NotImplementedError
 
     async def delete_item(self):
-        raise NotImplementedError
-
-    async def item_members(self):
-        raise NotImplementedError
-
-    async def item_user_role(self):
         raise NotImplementedError
 
     async def item_children(self):

@@ -5,7 +5,6 @@ from sqlalchemy import String
 from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 from sqlalchemy import UniqueConstraint
-from sqlalchemy.orm import backref
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import mapped_column
 from sqlalchemy_json import mutable_json_type
