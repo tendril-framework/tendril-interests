@@ -100,7 +100,7 @@ class InterestBase(object):
         return self._model_instance.allowed_children
 
     @with_db
-    def assign_role(self, user, role, reference=None, session=None):
+    def assign_role(self, role, user, reference=None, session=None):
         assign_role(self.id, user, role, reference=reference, session=session)
         scopes_assignable = self.model.role_spec.get_role_scopes(role)
         print(scopes_assignable)
@@ -236,6 +236,9 @@ class InterestBase(object):
     def commit(self):
         self._commit_to_db()
         return self
+
+    def __repr__(self):
+        return f"<{self.ident}>"
 
 
 def load(manager):

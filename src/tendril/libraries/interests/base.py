@@ -24,7 +24,7 @@ class GenericInterestLibrary(object):
         return self.interest_class.model.type_name
 
     def idents(self):
-        pass
+        return [x.ident for x in self.items()]
 
     @with_db
     def items(self, user=None, session=None):
