@@ -1,5 +1,7 @@
 
 
+import enum
+from sqlalchemy import Enum
 from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import Integer
@@ -22,6 +24,14 @@ from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
 
+class InterestLifecycleStatus(enum.Enum):
+    NEW = "NEW"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    CLOSED = "CLOSED"
+    ARCHIVAL = "ARCHIVAL"
+
+
 class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):
     parent_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
     child_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
@@ -37,6 +47,8 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
 
     type = Column(String(50), nullable=False, default=type_name)
     name = Column(String(255), nullable=False)
+    status = Column(Enum(InterestLifecycleStatus), nullable=False,
+                    default=InterestLifecycleStatus.NEW)
     info = Column(mutable_json_type(dbtype=JSONB))
 
     # @declared_attr

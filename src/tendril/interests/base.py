@@ -8,6 +8,7 @@ from tendril.authn.pydantic import UserStubTMixin
 from tendril.utils.pydantic import TendrilTBaseModel
 
 from tendril.db.models.interests import InterestModel
+from tendril.db.models.interests import InterestLifecycleStatus
 
 from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests import upsert_interest
@@ -30,6 +31,7 @@ class InterestBaseTModel(TendrilTBaseModel):
     type: str
     id: int
     info: dict
+    status: InterestLifecycleStatus
     roles: Optional[List[str]]
     permissions: Optional[List[str]]
 
@@ -39,9 +41,11 @@ class InterestBase(object):
     tmodel = InterestBaseTModel
 
     def __init__(self, name):
+        self._name = None
+        self._model_instance = None
+        self._status: InterestLifecycleStatus = None
         if isinstance(name, InterestModel):
             self._model_instance = name
-            self._name = None
         else:
             self._name = name
             self._model_instance: InterestModel = self._commit_to_db()
@@ -63,6 +67,16 @@ class InterestBase(object):
 
     def _info(self):
         return {}
+
+    @property
+    def status(self):
+        self._status = self._model_instance.status
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        self._status = value
+        self._commit_to_db()
 
     @property
     def id(self):
@@ -198,6 +212,7 @@ class InterestBase(object):
             'type': self.type_name,
             'id': self.id,
             'info': self.info,
+            'status': self.status,
         }
         if include_roles or include_permissions:
             user_roles = self.get_user_effective_roles(user, session=session)
@@ -209,7 +224,14 @@ class InterestBase(object):
 
     @with_db
     def _commit_to_db(self, session=None):
-        self._model_instance = upsert_interest(self.name, self.info, type=self.type_name, session=session)
+        kwargs = {'name': self.name,
+                  'info': self.info,
+                  'status': self._status,
+                  'type': self.type_name,
+                  'session': session}
+        if self._model_instance:
+            kwargs['id'] = self.id
+        self._model_instance = upsert_interest(**kwargs)
 
     def commit(self):
         self._commit_to_db()

@@ -81,19 +81,24 @@ def get_interest(id=None, name=None, type=None, session=None):
 
 
 @with_db
-def upsert_interest(name, info, type=None, session=None):
+def upsert_interest(id=None, name=None, status=None, info=None, type=None, session=None):
     if name is None:
         raise AttributeError("name cannot be None")
 
     try:
-        existing = get_interest(name, type=type, session=session)
-        existing.info = info
+        existing = get_interest(id=id, name=name, type=type, session=session)
         interest = existing
     except NoResultFound:
-        if type:
-            interest = InterestModel(name=name, info=info, type=type)
-        else:
-            interest = InterestModel(name=name, info=info)
+        if id:
+            raise AttributeError(f"Specific id {id} provided but not found in database.")
+        qmodel = _type_discriminator(type)
+        interest = qmodel(name=name, info=info)
+    if name:
+        interest.name = name
+    if info:
+        interest.info = info
+    if status:
+        interest.status = status.value
     session.add(interest)
     return interest
 
