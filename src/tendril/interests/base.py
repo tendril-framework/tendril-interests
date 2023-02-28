@@ -7,6 +7,7 @@ from functools import cached_property
 from tendril.authn.pydantic import UserStubTMixin
 from tendril.utils.pydantic import TendrilTBaseModel
 
+from tendril.authn.db.controller import get_user_by_id
 from tendril.db.models.interests import InterestModel
 from tendril.db.models.interests import InterestLifecycleStatus
 
@@ -101,9 +102,11 @@ class InterestBase(object):
 
     @with_db
     def assign_role(self, role, user, reference=None, session=None):
-        assign_role(self.id, user, role, reference=reference, session=session)
+        membership = assign_role(self.id, user, role, reference=reference, session=session)
         scopes_assignable = self.model.role_spec.get_role_scopes(role)
-        print(scopes_assignable)
+        from tendril.authz.connector import add_user_scopes
+        user = get_user_by_id(membership.user_id, session=session)
+        add_user_scopes(user.puid, scopes_assignable)
 
     @with_db
     def remove_role(self, user, role, reference=None, session=None):

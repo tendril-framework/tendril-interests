@@ -115,6 +115,18 @@ def preprocess_interest(interest, type=None, session=None):
 
 
 @with_db
+def get_membership(interest, user, role, session=None):
+    interest_id = preprocess_interest(interest, session=session)
+    user_id = preprocess_user(user, session=session)
+    role_id = preprocess_role(role, session=session)
+    q = session.query(InterestMembershipModel)\
+        .filter_by(interest_id=interest_id)\
+        .filter_by(user_id=user_id)\
+        .filter_by(role_id=role_id)
+    return q.one()
+
+
+@with_db
 def assign_role(interest, user, role, reference=None, session=None):
     kwargs = {
         'interest_id': preprocess_interest(interest, session=session),
@@ -124,7 +136,14 @@ def assign_role(interest, user, role, reference=None, session=None):
     if reference:
         kwargs['reference'] = reference
 
-    membership = InterestMembershipModel(**kwargs)
+    try:
+        existing = get_membership(interest=kwargs['interest_id'],
+                                  user=kwargs['user_id'],
+                                  role=kwargs['role_id'], session=session)
+        membership = existing
+    except NoResultFound:
+        membership = InterestMembershipModel(**kwargs)
+
     session.add(membership)
     return membership
 
@@ -164,18 +183,6 @@ def get_user_memberships(user, interest_type=None, session=None):
         filter_by(type=qmodel.type_name)
 
     return q.all()
-
-
-@with_db
-def get_membership(interest, user, role, session=None):
-    interest_id = preprocess_interest(interest, session=session)
-    user_id = preprocess_user(user, session=session)
-    role_id = preprocess_role(role, session=session)
-    q = session.query(InterestMembershipModel)\
-        .filter_by(interest_id=interest_id)\
-        .filter_by(user_id=user_id)\
-        .filter_by(role_id=role_id)
-    return q.one()
 
 
 @with_db
