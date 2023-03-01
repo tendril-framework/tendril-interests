@@ -83,11 +83,6 @@ class InterestBase(object):
     def id(self):
         return self._model_instance.id
 
-    @with_db
-    def memberships(self, session=None):
-        session.add(self._model_instance)
-        return self._model_instance.memberships.all()
-
     @property
     def info(self):
         return self._info()
@@ -114,6 +109,10 @@ class InterestBase(object):
         remove_role(self.id, user, role, reference=reference, session=session)
 
     @with_db
+    def remove_user(self, user, session=None):
+        remove_user(self.id, user, session=session)
+
+    @with_db
     def get_user_roles(self, user, session=None):
         return get_user_roles(self.id, user, session=session)
 
@@ -138,15 +137,45 @@ class InterestBase(object):
         if role not in self.model.role_spec.roles:
             raise ValueError(f"{role} is not a recognized role for "
                              f"{self.__class__.__name__}")
-        users = {}
+        users = []
         for d_role in self.model.role_spec.get_accepted_roles(role):
             for user in get_role_users(self.id, d_role, session=session):
-                users[user.id] = user
+                users.append(user)
         return users
 
+    @staticmethod
+    def _build_ms_info_dict(user, prov):
+        from tendril.authn.users import get_user_stub
+        infodict = {'user': get_user_stub(user.puid)}
+        infodict.update(prov)
+        return infodict
+
     @with_db
-    def remove_user(self, user, session=None):
-        remove_user(self.id, user, session=session)
+    def memberships(self, role=None, session=None,
+                    include_effective=True, include_inherited=True):
+        if not role:
+            rv = {}
+            session.add(self._model_instance)
+            ms = self._model_instance.memberships.all()
+            for membership in ms:
+                rn = [(membership.role.name, {'delegated': False, 'inherited': False})]
+                if include_effective:
+                    rn.extend([(x, {'delegated': True, 'inherited': False})
+                               for x in self.model.role_spec.get_delegated_roles(rn[0][0])])
+                for rname, rprov in rn:
+                    rv.setdefault(rname, [])
+                    rv[rname].append(
+                        self._build_ms_info_dict(membership.user, rprov)
+                    )
+            return rv
+        else:
+            rv = [self._build_ms_info_dict(x, {'delegated': False, 'inherited': False})
+                  for x in self.get_role_users(role, session=session)]
+            if include_effective:
+                for d_role in self.model.role_spec.get_alternate_roles(role):
+                    rv = [self._build_ms_info_dict(x, {'delegated': True, 'inherited': False})
+                          for x in self.get_role_users(d_role, session=session)]
+            return rv
 
     @with_db
     def get_parent(self, session=None):

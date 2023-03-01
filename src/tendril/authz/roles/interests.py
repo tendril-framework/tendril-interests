@@ -1,6 +1,14 @@
 
 
 from functools import cached_property
+from tendril.authn.pydantic import UserStubTModel
+from tendril.utils.pydantic import TendrilTBaseModel
+
+
+class MembershipInfoTModel(TendrilTBaseModel):
+    user: UserStubTModel
+    delegated: bool
+    inherited: bool
 
 
 class InterestRoleSpec(object):
@@ -42,15 +50,21 @@ class InterestRoleSpec(object):
             'add_member:owner': ('Owner', f'{self.prefix}:write'),
         }
 
-    def get_effective_roles(self, role):
-        return [role] + self.role_delegations.get(role, [])
+    def get_delegated_roles(self, role):
+        return self.role_delegations.get(role, [])
 
-    def get_accepted_roles(self, role):
-        rv = [role]
+    def get_effective_roles(self, role):
+        return [role] + self.get_delegated_roles(role)
+
+    def get_alternate_roles(self, role):
+        rv = []
         for k, v in self.role_delegations.items():
             if role in v:
                 rv.append(k)
         return rv
+
+    def get_accepted_roles(self, role):
+        return [role] + self.get_alternate_roles(role)
 
     def _get_model(self):
         from tendril import interests
