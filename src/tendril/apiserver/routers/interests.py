@@ -5,15 +5,20 @@ from fastapi import Depends
 
 from tendril.authn.users import auth_spec
 from tendril.authn.users import authn_dependency
+from tendril.authn.users import AuthUserModel
 
 from tendril.libraries import interests
 from tendril.interests import type_spec
+from tendril.datasets.interests.memberships import UserMembershipCollector
+from tendril.datasets.interests.memberships import UserMembershipsTModel
+
+from tendril.utils.db import get_session
 
 
 interests_router = APIRouter(prefix='/interests',
                              tags=["Common Interests API"],
-                             # dependencies=[Depends(authn_dependency),
-                             #               auth_spec(scopes=['interests:common'])]
+                             dependencies=[Depends(authn_dependency),
+                                           auth_spec(scopes=['interests:common'])]
                              )
 
 
@@ -25,6 +30,36 @@ async def get_interest_libraries():
 @interests_router.get("/types")
 async def get_interest_types():
     return {'interest_types': type_spec}
+
+
+def get_interest_stub(interest):
+    return {
+        'type_name': interest.type_name,
+        'name': interest.name,
+        'id': interest.id,
+    }
+
+
+@interests_router.get("/memberships", response_model=UserMembershipsTModel)
+async def get_user_memberships(user: AuthUserModel = auth_spec(),
+                               include_delegated: bool = False,
+                               include_inherited: bool = False):
+    from tendril.db.controllers import interests
+    from tendril.interests import type_codes
+    with get_session() as session:
+        memberships = interests.get_user_memberships(user=user, session=session)
+        rv = UserMembershipCollector()
+        for m in memberships:
+            print(m)
+            rv.add_membership(m.interest, m.role.name, False, False)
+            if include_delegated:
+                print("DELEGATED")
+                type_code = m.interest.type
+                interest_rs = type_codes[type_code].model.role_spec
+                for role in interest_rs.get_delegated_roles(m.role.name):
+                    rv.add_membership(m.interest, role, True, False)
+        rv.process()
+    return rv.render()
 
 
 def _generate_routers():

@@ -32,6 +32,7 @@ core_dependencies = [
     'tendril-utils-db',
     'tendril-auth',
     'networkx',
+    'polars',
 ]
 
 install_requires = core_dependencies + ['wheel']
