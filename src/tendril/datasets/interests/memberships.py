@@ -73,9 +73,9 @@ class UserMembershipCollector(object):
         return rv
 
 
-def get_user_memberships(user_id,
-                         include_delegated=True,
-                         include_inherited=True):
+def user_memberships(user_id,
+                     include_delegated=True,
+                     include_inherited=True):
     from tendril.db.controllers import interests
     from tendril.interests import type_codes
     with get_session() as session:
@@ -89,4 +89,4 @@ def get_user_memberships(user_id,
                 for role in interest_rs.get_delegated_roles(m.role.name):
                     rv.add_membership(m.interest, role, True, False)
         rv.process()
-    return rv
+    return rv.render()
