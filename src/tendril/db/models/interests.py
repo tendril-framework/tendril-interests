@@ -39,10 +39,6 @@ class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):
 
 class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     type_name = "interest"
-
-    allowed_children = ['interest']
-    recognized_artefacts = {}
-
     role_spec = InterestRoleSpec()
 
     type = Column(String(50), nullable=False, default=type_name)

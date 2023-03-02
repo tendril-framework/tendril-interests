@@ -13,12 +13,43 @@ class MembershipInfoTModel(TendrilTBaseModel):
 
 class InterestRoleSpec(object):
     prefix = 'interest'
+
+    allowed_children = ['interest']
+    recognized_artefacts = {}
+
     roles = ['Owner', 'Member']
-    role_delegations = {'Owner': ['Member']}
+
+    apex_role = 'Owner'
+    base_role = 'Member'
+
+    read_role = None
+    edit_role = None
+    delete_role = None
+
+    authz_read_role = None
+    authz_write_role = None
+    authz_write_peers = False
+
     inherits_from_parent = True
 
+    custom_delegations = {}
+
     @cached_property
-    def scopes(self):
+    def role_delegations(self):
+        rv = {self.apex_role: '*'}
+        rv.update(self.custom_delegations)
+        for role in self.roles:
+            if role == self.base_role:
+                continue
+            rv.setdefault(role, [])
+            rv[role].append(self.base_role)
+        return rv
+
+    @staticmethod
+    def normalize_role_name(role: str):
+        return role.lower().replace(" ", '_')
+
+    def _standard_scopes(self):
         return {
             f'{self.prefix}:create': f"Create operations on '{self.prefix}' interests",
             f'{self.prefix}:read': f"Read operations on '{self.prefix}' interests",
@@ -26,17 +57,46 @@ class InterestRoleSpec(object):
             f'{self.prefix}:delete': f"Delete operations on '{self.prefix}' interests",
         }
 
+    def _custom_scopes(self):
+        return {}
+
     @cached_property
-    def actions(self):
-        return {
-            'read': ('Member', f'{self.prefix}:read'),
-            'edit': ('Owner', f'{self.prefix}:write'),
-            'delete': ('Owner', f'{self.prefix}:delete'),
-            'create': ('Owner', f'{self.prefix}:create'),
+    def scopes(self):
+        rv = {}
+        rv.update(self._standard_scopes())
+        rv.update(self._custom_scopes())
+        return rv
 
-            # create does not actually need a role. The appropriate scope
-            # needs to be assigned when the user gets permissions on the parent
+    def _crud_actions(self):
+        rv = {}
+        rv['read'] = (self.read_role or self.apex_role, f'{self.prefix}:read')
+        rv['edit'] = (self.edit_role or self.apex_role, f'{self.prefix}:write')
+        rv['delete'] = (self.delete_role or self.apex_role, f'{self.prefix}:delete')
+        rv['create'] = (self.apex_role, f'{self.prefix}:create')
 
+        # create does not actually need a role and no role will get checked.
+        # The appropriate scope needs to be assigned when the user gets
+        # permissions on the parent.
+        return rv
+
+    def _authz_actions(self):
+        rv = {}
+        rv['read_members'] = (self.authz_read_role or self.apex_role, f'{self.prefix}:read')
+        rv['add_member'] = (self.authz_write_role or self.apex_role, f'{self.prefix}:write')
+        for role in self.roles:
+            nrole = self.normalize_role_name(role)
+            rv[f'read_members:{nrole}'] = (self.authz_read_role or self.apex_role, f'{self.prefix}:read')
+            if self.authz_write_peers:
+                rv[f'add_member:{nrole}'] = (role, f'{self.prefix}:write')
+            else:
+                rv[f'add_member:{nrole}'] = (self.authz_write_role or self.apex_role, f'{self.prefix}:write')
+        return rv
+
+    def _hierarchy_actions(self):
+        rv = {}
+
+        return rv
+        {
             'read_children': ('Member', f'{self.prefix}:read'),
             'read_children:interest': ('Member', f'{self.prefix}:read'),
             'add_child': ('Owner', f'{self.prefix}:write'),
@@ -45,10 +105,19 @@ class InterestRoleSpec(object):
             'read_artefacts': ('Member', f'{self.prefix}:read'),
             'add_artefact': ('Owner', f'{self.prefix}:write'),
             'delete_artefact': ('Owner', f'{self.prefix}:delete'),
-
-            'add_member': ('Owner', f'{self.prefix}:write'),
-            'add_member:owner': ('Owner', f'{self.prefix}:write'),
         }
+
+    def _custom_actions(self):
+        return {}
+
+    @cached_property
+    def actions(self):
+        rv = {}
+        rv.update(self._crud_actions())
+        rv.update(self._authz_actions())
+        rv.update(self._hierarchy_actions())
+        rv.update(self._custom_actions())
+        return rv
 
     def get_delegated_roles(self, role):
         return self.role_delegations.get(role, [])
@@ -66,16 +135,12 @@ class InterestRoleSpec(object):
     def get_accepted_roles(self, role):
         return [role] + self.get_alternate_roles(role)
 
-    def _get_model(self):
-        from tendril import interests
-        return interests.type_codes[self.prefix].model
-
     def get_role_scopes(self, role):
         from tendril import interests
         scopes = set([s for (r, s) in self.actions.values()
                       if r in self.get_effective_roles(role)])
 
-        ac = self._get_model().allowed_children
+        ac = self.allowed_children
         if '*' in ac:
             ac = interests.type_codes.keys()
         for child_type in ac:
@@ -94,3 +159,9 @@ class InterestRoleSpec(object):
         for role in roles:
             allowed.update(self.get_role_permissions(role))
         return allowed
+
+    def get_permitted_roles(self, action):
+        while action not in self.actions.keys():
+            if ':' in action:
+                action = action.rsplit(':', 1)[0]
+        return set(self.get_accepted_roles(self.actions[action][0]))

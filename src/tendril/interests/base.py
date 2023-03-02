@@ -93,7 +93,7 @@ class InterestBase(object):
 
     @property
     def allowed_children(self):
-        return self._model_instance.allowed_children
+        return self._model_instance.role_spec.allowed_children
 
     @with_db
     def assign_role(self, role, user, reference=None, session=None):
@@ -118,9 +118,9 @@ class InterestBase(object):
 
     @with_db
     def get_user_effective_roles(self, user, session=None):
-        rv = []
+        rv = set()
         for role in self.get_user_roles(user, session=session):
-            rv.extend(self.model.role_spec.get_effective_roles(role))
+            rv.add(self.model.role_spec.get_effective_roles(role))
         if self.model.role_spec.inherits_from_parent:
             pass
         return rv
@@ -142,6 +142,12 @@ class InterestBase(object):
             for user in get_role_users(self.id, d_role, session=session):
                 users.append(user)
         return users
+
+    @with_db
+    def check_user_access(self, user, action, session=None):
+        action_roles = self.model.role_spec.get_permitted_roles(action)
+        user_roles = set(self.get_user_effective_roles(user, session=session))
+        return any(x in user_roles for x in action_roles)
 
     @staticmethod
     def _build_ms_info_dict(user, prov):

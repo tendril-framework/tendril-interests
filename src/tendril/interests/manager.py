@@ -112,7 +112,7 @@ class InterestManager(object):
         self._type_spec = {
             key:
                 {'roles': cls.model().role_spec.roles,
-                 'allowed_children': cls.model.allowed_children}
+                 'allowed_children': cls.model.role_spec.allowed_children}
             for key, cls in self._type_codes.items()
         }
 
