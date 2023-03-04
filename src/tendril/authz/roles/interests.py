@@ -30,6 +30,14 @@ class InterestRoleSpec(object):
     authz_write_role = None
     authz_write_peers = False
 
+    child_read_role = None
+    child_add_role = None
+    child_delete_role = None
+
+    child_read_roles = {}
+    child_add_roles = {}
+    child_delete_roles = {}
+
     inherits_from_parent = True
 
     custom_delegations = {}
@@ -48,6 +56,10 @@ class InterestRoleSpec(object):
     @staticmethod
     def normalize_role_name(role: str):
         return role.lower().replace(" ", '_')
+
+    @staticmethod
+    def normalize_type_name(type: str):
+        return type.lower().replace(" ", "_")
 
     def _standard_scopes(self):
         return {
@@ -68,11 +80,10 @@ class InterestRoleSpec(object):
         return rv
 
     def _crud_actions(self):
-        rv = {}
-        rv['read'] = (self.read_role or self.apex_role, f'{self.prefix}:read')
-        rv['edit'] = (self.edit_role or self.apex_role, f'{self.prefix}:write')
-        rv['delete'] = (self.delete_role or self.apex_role, f'{self.prefix}:delete')
-        rv['create'] = (self.apex_role, f'{self.prefix}:create')
+        rv = {'read': (self.read_role or self.apex_role, f'{self.prefix}:read'),
+              'edit': (self.edit_role or self.apex_role, f'{self.prefix}:write'),
+              'delete': (self.delete_role or self.apex_role, f'{self.prefix}:delete'),
+              'create': (self.apex_role, f'{self.prefix}:create')}
 
         # create does not actually need a role and no role will get checked.
         # The appropriate scope needs to be assigned when the user gets
@@ -80,9 +91,10 @@ class InterestRoleSpec(object):
         return rv
 
     def _authz_actions(self):
-        rv = {}
-        rv['read_members'] = (self.authz_read_role or self.apex_role, f'{self.prefix}:read')
-        rv['add_member'] = (self.authz_write_role or self.apex_role, f'{self.prefix}:write')
+        rv = {'read_members': (self.authz_read_role or self.apex_role,
+                               f'{self.prefix}:read'),
+              'add_member': (self.authz_write_role or self.apex_role,
+                             f'{self.prefix}:write')}
         for role in self.roles:
             nrole = self.normalize_role_name(role)
             rv[f'read_members:{nrole}'] = (self.authz_read_role or self.apex_role, f'{self.prefix}:read')
@@ -93,15 +105,28 @@ class InterestRoleSpec(object):
         return rv
 
     def _hierarchy_actions(self):
-        rv = {}
+        rv = {'read_children': (self.child_read_role or self.apex_role,
+                                f'{self.prefix}:read'),
+              'add_child': (self.child_add_role or self.apex_role,
+                            f'{self.prefix}:write'),
+              'remove_child': (self.child_delete_role or self.apex_role,
+                               f'{self.prefix}:write')}
 
+        for ctype in self.allowed_children:
+            ctype = self.normalize_type_name(ctype)
+            rv[f'read_children:{ctype}'] = (self.child_read_roles.get(ctype, None)
+                                            or self.child_read_role
+                                            or self.apex_role, f'{self.prefix}:read')
+            rv[f'add_child:{ctype}'] = (self.child_add_roles.get(ctype, None)
+                                        or self.child_add_role
+                                        or self.apex_role, f'{self.prefix}:write')
+            rv[f'remove_child:{ctype}'] = (self.child_delete_roles.get(ctype, None)
+                                           or self.child_delete_role
+                                           or self.apex_role, f'{self.prefix}:write')
         return rv
-        {
-            'read_children': ('Member', f'{self.prefix}:read'),
-            'read_children:interest': ('Member', f'{self.prefix}:read'),
-            'add_child': ('Owner', f'{self.prefix}:write'),
-            'add_child:interest': ('Owner', f'{self.prefix}:write'),
 
+    def _artefact_actions(self):
+        return {
             'read_artefacts': ('Member', f'{self.prefix}:read'),
             'add_artefact': ('Owner', f'{self.prefix}:write'),
             'delete_artefact': ('Owner', f'{self.prefix}:delete'),
@@ -116,6 +141,7 @@ class InterestRoleSpec(object):
         rv.update(self._crud_actions())
         rv.update(self._authz_actions())
         rv.update(self._hierarchy_actions())
+        rv.update(self._artefact_actions())
         rv.update(self._custom_actions())
         return rv
 
