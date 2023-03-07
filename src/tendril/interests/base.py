@@ -27,18 +27,27 @@ from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
 
-class InterestBaseTModel(TendrilTBaseModel):
+class InterestBaseCreateTModel(TendrilTBaseModel):
     name: str
     type: str
-    id: int
     info: dict
-    status: InterestLifecycleStatus
+
+
+class InterestBaseReadTMixin(TendrilTBaseModel):
+    id: int
     roles: Optional[List[str]]
     permissions: Optional[List[str]]
+    status: InterestLifecycleStatus
+
+
+class InterestBaseTModel(InterestBaseCreateTModel,
+                         InterestBaseReadTMixin):
+    ...
 
 
 class InterestBase(object):
     model = InterestModel
+    tmodel_create = InterestBaseCreateTModel
     tmodel = InterestBaseTModel
 
     def __init__(self, name):
@@ -120,7 +129,7 @@ class InterestBase(object):
     def get_user_effective_roles(self, user, session=None):
         rv = set()
         for role in self.get_user_roles(user, session=session):
-            rv.add(self.model.role_spec.get_effective_roles(role))
+            rv.update(self.model.role_spec.get_effective_roles(role))
         if self.model.role_spec.inherits_from_parent:
             pass
         return rv
@@ -255,9 +264,9 @@ class InterestBase(object):
         if include_roles or include_permissions:
             user_roles = self.get_user_effective_roles(user, session=session)
         if include_roles:
-            rv['roles'] = user_roles
+            rv['roles'] = sorted(user_roles)
         if include_permissions:
-            rv['permissions'] = self.model.role_spec.get_roles_permissions(user_roles)
+            rv['permissions'] = sorted(self.model.role_spec.get_roles_permissions(user_roles))
         return rv
 
     @with_db
