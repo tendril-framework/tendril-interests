@@ -44,10 +44,10 @@ class InterestRoleSpec(object):
 
     @cached_property
     def role_delegations(self):
-        rv = {self.apex_role: '*'}
+        rv = {self.apex_role: self.roles}
         rv.update(self.custom_delegations)
         for role in self.roles:
-            if role == self.base_role:
+            if role in [self.base_role, self.apex_role]:
                 continue
             rv.setdefault(role, [])
             rv[role].append(self.base_role)
@@ -112,7 +112,12 @@ class InterestRoleSpec(object):
               'remove_child': (self.child_delete_role or self.apex_role,
                                f'{self.prefix}:write')}
 
-        for ctype in self.allowed_children:
+        ac = self.allowed_children
+        if '*' in ac:
+            from tendril import interests
+            ac = interests.type_codes.keys()
+
+        for ctype in ac:
             ctype = self.normalize_type_name(ctype)
             rv[f'read_children:{ctype}'] = (self.child_read_roles.get(ctype, None)
                                             or self.child_read_role

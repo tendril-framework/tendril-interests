@@ -54,7 +54,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                    include_roles: bool = False,
                    include_permissions: bool = False):
         with get_session() as session:
-            rv = self._get_item(id, user, 'read', session).\
+            rv = self._get_item(id, user, 'read', session=session).\
                 export(user=user, session=session,
                        include_roles=include_roles,
                        include_permissions=include_permissions)
@@ -65,7 +65,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                            include_effective: bool=False,
                            include_inherited: bool=True):
         with get_session() as session:
-            item = self._get_item(id, user, 'read_members', session)
+            item = self._get_item(id, user, 'read_members', session=session)
             rv = item.memberships(include_effective=include_effective,
                                   include_inherited=include_inherited,
                                   session=session)
@@ -77,7 +77,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                 include_effective: bool = False,
                                 include_inherited: bool = True):
         with get_session() as session:
-            item = self._get_item(id, user, f'read_members:{role}', session)
+            item = self._get_item(id, user, f'read_members:{role}', session=session)
             rv = item.memberships(role=role, session=session,
                                   include_effective=include_effective,
                                   include_inherited=include_inherited)
