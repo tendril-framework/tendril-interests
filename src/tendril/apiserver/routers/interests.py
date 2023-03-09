@@ -59,3 +59,4 @@ def _generate_routers():
 routers = [
     interests_router
 ] + _generate_routers()
+

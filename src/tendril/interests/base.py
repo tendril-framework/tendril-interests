@@ -13,7 +13,6 @@ from tendril.db.models.interests import InterestLifecycleStatus
 
 from tendril.common.interests.exceptions import RequiredRoleNotPresent
 from tendril.common.interests.exceptions import RequiredParentNotPresent
-from tendril.common.interests.exceptions import ActivationNotAllowedByUser
 from tendril.common.interests.exceptions import ActivationNotAllowedFromState
 
 from tendril.db.controllers.interests import get_interest
@@ -28,6 +27,8 @@ from tendril.db.controllers.interests import set_parent
 from tendril.db.controllers.interests import get_parent
 
 from tendril.authz.roles.interests import require_permission
+from tendril.authz.roles.interests import normalize_role_name
+from tendril.authz.roles.interests import normalize_type_name
 
 from tendril.utils.db import with_db
 from tendril.utils import log
@@ -99,11 +100,11 @@ class InterestBase(object):
     @require_permission('edit')
     def activate(self, session=None):
         if self.status not in self.model.role_spec.activation_requirements['allowed_states']:
-            raise ActivationNotAllowedFromState()
+            raise ActivationNotAllowedFromState(self.status, self.id, self.name)
         for role in self.model.role_spec.activation_requirements['roles_required']:
             users = self.get_role_accepted_users(role, session=session)
             if not len(users):
-                raise RequiredRoleNotPresent()
+                raise RequiredRoleNotPresent(role, self.id, self.name)
         if self.model.role_spec.activation_requirements['parent_required']:
             pass
         # self._model_instance.status = InterestLifecycleStatus.ACTIVE
@@ -181,6 +182,7 @@ class InterestBase(object):
         return infodict
 
     @with_db
+    @require_permission('read_members', specifier='role', preprocessor=normalize_role_name)
     def memberships(self, role=None, session=None,
                     include_effective=True, include_inherited=True):
         if not role:
@@ -266,7 +268,8 @@ class InterestBase(object):
         pass
 
     @with_db
-    def export(self, session=None, user=None,
+    @require_permission(action='read', strip_auth=False, required=False)
+    def export(self, session=None, auth_user=None,
                include_permissions=False,
                include_roles=False):
         rv = {
@@ -277,7 +280,7 @@ class InterestBase(object):
             'status': self.status,
         }
         if include_roles or include_permissions:
-            user_roles = self.get_user_effective_roles(user, session=session)
+            user_roles = self.get_user_effective_roles(auth_user, session=session)
         if include_roles:
             rv['roles'] = sorted(user_roles)
         if include_permissions:

@@ -6,12 +6,22 @@ from tendril.authn.pydantic import UserStubTModel
 from tendril.utils.pydantic import TendrilTBaseModel
 from tendril.common.interests.states import InterestLifecycleStatus
 from tendril.common.interests.exceptions import AuthorizationRequiredError
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEBUG)
 
 
 class MembershipInfoTModel(TendrilTBaseModel):
     user: UserStubTModel
     delegated: bool
     inherited: bool
+
+
+def normalize_role_name(role: str):
+    return role.lower().replace(" ", '_')
+
+
+def normalize_type_name(type: str):
+    return type.lower().replace(" ", "_")
 
 
 class InterestRoleSpec(object):
@@ -229,20 +239,29 @@ def require_permission(action,
                        strip_auth=True, required=True):
     def decorator(func):
         @wraps(func)
-        def wrapper(self, *args, **kwargs):
-            print(self, args, kwargs)
-            auth_user = kwargs.pop('auth_user', None)
+        def permission_check(self, *args, **kwargs):
+            if strip_auth:
+                auth_user = kwargs.pop('auth_user', None)
+            else:
+                auth_user = kwargs.get('auth_user', None)
             if required and auth_user is None:
                 raise AttributeError("auth_user is required to execute "
                                      "this interest instance method")
+            if not auth_user:
+                return func(self, *args, **kwargs)
             session = kwargs.get('session', None)
             if specifier:
-                laction = f'{action}:{preprocessor(getattr(kwargs, specifier))}'
+                s = kwargs.get(specifier, None)
+                if s:
+                    laction = f'{action}:{preprocessor(s)}'
+                else:
+                    laction = action
             else:
                 laction = action
             if self.check_user_access(user=auth_user, action=laction, session=session):
+                logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
                 return func(self, *args, **kwargs)
             else:
-                raise AuthorizationRequiredError()
-        return wrapper
+                raise AuthorizationRequiredError(auth_user, laction, self.id, self.name)
+        return permission_check
     return decorator
