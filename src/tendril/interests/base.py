@@ -107,8 +107,8 @@ class InterestBase(object):
                 raise RequiredRoleNotPresent(role, self.id, self.name)
         if self.model.role_spec.activation_requirements['parent_required']:
             pass
-        # self._model_instance.status = InterestLifecycleStatus.ACTIVE
-        # session.add(self._model_instance)
+        self._model_instance.status = InterestLifecycleStatus.ACTIVE
+        session.add(self._model_instance)
 
     @property
     def id(self):

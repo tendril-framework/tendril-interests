@@ -259,7 +259,7 @@ def require_permission(action,
             else:
                 laction = action
             if self.check_user_access(user=auth_user, action=laction, session=session):
-                logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
+                # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
                 return func(self, *args, **kwargs)
             else:
                 raise AuthorizationRequiredError(auth_user, laction, self.id, self.name)

@@ -6,7 +6,7 @@ from typing import Dict
 from fastapi import APIRouter
 from fastapi import Request
 from fastapi import Depends
-from fastapi import HTTPException
+from fastapi.responses import JSONResponse
 
 from tendril.authn.users import auth_spec
 from tendril.authn.users import AuthUserModel
@@ -68,6 +68,17 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                   include_inherited=include_inherited)
         return rv
 
+    async def activate_item(self, request: Request, id: int,
+                            user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            item.activate(auth_user=user, session=session)
+        return JSONResponse(
+            status_code=200,
+            content={'message': f"{self._actual.interest_class.model.role_spec.prefix} "
+                                f"{id} Activated"}
+        )
+
     async def create_item(self):
         raise NotImplementedError
 
@@ -89,19 +100,20 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     def generate(self, name):
         desc = f'{name} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
-        read_router = APIRouter(prefix=f'/{name}', tags=[desc],
-                                dependencies=[Depends(authn_dependency)])
-        read_router.add_api_route("", self.items, methods=["GET"],
-                                  response_model=List[self._actual.interest_class.tmodel],
-                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
-        read_router.add_api_route("/{id}", self.item, methods=["GET"],
-                                  response_model=self._actual.interest_class.tmodel,
-                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
-        read_router.add_api_route("/{id}/members", self.item_members, methods=["GET"],
-                                  response_model=Dict[str, List[MembershipInfoTModel]],
-                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-        read_router.add_api_route("/{id}/members/{role}", self.item_role_members, methods=["GET"],
-                                  response_model=List[MembershipInfoTModel],
-                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-
-        return [read_router]
+        router = APIRouter(prefix=f'/{name}', tags=[desc],
+                           dependencies=[Depends(authn_dependency)])
+        router.add_api_route("", self.items, methods=["GET"],
+                             response_model=List[self._actual.interest_class.tmodel],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
+        router.add_api_route("/{id}", self.item, methods=["GET"],
+                             response_model=self._actual.interest_class.tmodel,
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
+        router.add_api_route("/{id}/members", self.item_members, methods=["GET"],
+                             response_model=Dict[str, List[MembershipInfoTModel]],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
+        router.add_api_route("/{id}/members/{role}", self.item_role_members, methods=["GET"],
+                             response_model=List[MembershipInfoTModel],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
+        router.add_api_route("/{id}/activate", self.activate_item, methods=['POST'],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
+        return [router]
