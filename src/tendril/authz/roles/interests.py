@@ -41,6 +41,16 @@ class InterestRoleSpec(object):
     inherits_from_parent = True
 
     custom_delegations = {}
+    additional_roles_required = []
+    parent_required = True
+    parent_types_required = []
+
+    @property
+    def activation_requirements(self):
+        rv = {'roles_required': [self.apex_role] + self.additional_roles_required,
+              'parent_required': self.parent_required,
+              'parent_types_required': self.parent_types_required}
+        return rv
 
     @cached_property
     def role_delegations(self):
