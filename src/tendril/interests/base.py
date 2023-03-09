@@ -11,6 +11,11 @@ from tendril.authn.db.controller import get_user_by_id
 from tendril.db.models.interests import InterestModel
 from tendril.db.models.interests import InterestLifecycleStatus
 
+from tendril.common.interests.exceptions import RequiredRoleNotPresent
+from tendril.common.interests.exceptions import RequiredParentNotPresent
+from tendril.common.interests.exceptions import ActivationNotAllowedByUser
+from tendril.common.interests.exceptions import ActivationNotAllowedFromState
+
 from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests import upsert_interest
 from tendril.db.controllers.interests import assign_role
@@ -21,6 +26,8 @@ from tendril.db.controllers.interests import remove_user
 from tendril.db.controllers.interests import get_children
 from tendril.db.controllers.interests import set_parent
 from tendril.db.controllers.interests import get_parent
+
+from tendril.authz.roles.interests import require_permission
 
 from tendril.utils.db import with_db
 from tendril.utils import log
@@ -88,8 +95,19 @@ class InterestBase(object):
         self._status = value
         self._commit_to_db()
 
-    def activate(self):
-        pass
+    @with_db
+    @require_permission('edit')
+    def activate(self, session=None):
+        if self.status not in self.model.role_spec.activation_requirements['allowed_states']:
+            raise ActivationNotAllowedFromState()
+        for role in self.model.role_spec.activation_requirements['roles_required']:
+            users = self.get_role_accepted_users(role, session=session)
+            if not len(users):
+                raise RequiredRoleNotPresent()
+        if self.model.role_spec.activation_requirements['parent_required']:
+            pass
+        # self._model_instance.status = InterestLifecycleStatus.ACTIVE
+        # session.add(self._model_instance)
 
     @property
     def id(self):
@@ -139,16 +157,10 @@ class InterestBase(object):
 
     @with_db
     def get_role_users(self, role, session=None):
-        if role not in self.model.role_spec.roles:
-            raise ValueError(f"{role} is not a recognized role for "
-                             f"{self.__class__.__name__}")
         return get_role_users(self.id, role, session=session)
 
     @with_db
     def get_role_accepted_users(self, role, session=None):
-        if role not in self.model.role_spec.roles:
-            raise ValueError(f"{role} is not a recognized role for "
-                             f"{self.__class__.__name__}")
         users = []
         for d_role in self.model.role_spec.get_accepted_roles(role):
             for user in get_role_users(self.id, d_role, session=session):

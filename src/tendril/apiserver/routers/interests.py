@@ -9,8 +9,8 @@ from tendril.authn.users import AuthUserModel
 
 from tendril.libraries import interests
 from tendril.interests import type_spec
-from tendril.datasets.interests.memberships import user_memberships
-from tendril.datasets.interests.memberships import UserMembershipsTModel
+from tendril.common.interests.memberships import user_memberships
+from tendril.common.interests.memberships import UserMembershipsTModel
 
 
 interests_router = APIRouter(prefix='/interests',

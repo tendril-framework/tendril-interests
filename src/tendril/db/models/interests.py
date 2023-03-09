@@ -1,6 +1,5 @@
 
 
-import enum
 from sqlalchemy import Enum
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -15,6 +14,8 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from tendril.authz.roles.interests import InterestRoleSpec
 
+from tendril.common.interests.states import InterestLifecycleStatus
+
 from tendril.utils.db import DeclBase
 from tendril.utils.db import BaseMixin
 from tendril.utils.db import TimestampMixin
@@ -22,14 +23,6 @@ from tendril.authn.db.mixins import UserMixin
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
-
-
-class InterestLifecycleStatus(enum.Enum):
-    NEW = "NEW"
-    ACTIVE = "ACTIVE"
-    SUSPENDED = "SUSPENDED"
-    CLOSED = "CLOSED"
-    ARCHIVAL = "ARCHIVAL"
 
 
 class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):

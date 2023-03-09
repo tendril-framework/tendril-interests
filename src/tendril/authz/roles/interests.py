@@ -1,8 +1,11 @@
 
 
 from functools import cached_property
+from functools import wraps
 from tendril.authn.pydantic import UserStubTModel
 from tendril.utils.pydantic import TendrilTBaseModel
+from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.interests.exceptions import AuthorizationRequiredError
 
 
 class MembershipInfoTModel(TendrilTBaseModel):
@@ -43,18 +46,18 @@ class InterestRoleSpec(object):
     custom_delegations = {}
     additional_roles_required = []
     parent_required = True
-    parent_types_required = []
 
-    @property
+    @cached_property
     def activation_requirements(self):
         rv = {'roles_required': [self.apex_role] + self.additional_roles_required,
               'parent_required': self.parent_required,
-              'parent_types_required': self.parent_types_required}
+              'allowed_states': [InterestLifecycleStatus.NEW,
+                                 InterestLifecycleStatus.ACTIVE]}
         return rv
 
     @cached_property
     def role_delegations(self):
-        rv = {self.apex_role: self.roles}
+        rv = {self.apex_role: [r for r in self.roles if r != self.apex_role]}
         rv.update(self.custom_delegations)
         for role in self.roles:
             if role in [self.base_role, self.apex_role]:
@@ -219,3 +222,27 @@ class InterestRoleSpec(object):
             if role in permitted:
                 return True
         return False
+
+
+def require_permission(action,
+                       specifier=None, preprocessor=lambda x: x,
+                       strip_auth=True, required=True):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            print(self, args, kwargs)
+            auth_user = kwargs.pop('auth_user', None)
+            if required and auth_user is None:
+                raise AttributeError("auth_user is required to execute "
+                                     "this interest instance method")
+            session = kwargs.get('session', None)
+            if specifier:
+                laction = f'{action}:{preprocessor(getattr(kwargs, specifier))}'
+            else:
+                laction = action
+            if self.check_user_access(user=auth_user, action=laction, session=session):
+                return func(self, *args, **kwargs)
+            else:
+                raise AuthorizationRequiredError()
+        return wrapper
+    return decorator

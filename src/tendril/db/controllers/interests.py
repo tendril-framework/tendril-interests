@@ -168,7 +168,12 @@ def get_user_roles(interest, user, session=None):
         join(InterestMembershipModel).\
         filter_by(interest_id=interest_id).\
         filter_by(user_id=user_id)
-    return q.all()[0]
+    # TODO this is weird. Figure out why.
+    rv = q.all()
+    if len(rv):
+        return rv[0]
+    else:
+        return rv
 
 
 @with_db
