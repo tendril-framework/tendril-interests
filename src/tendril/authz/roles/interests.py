@@ -92,12 +92,16 @@ class InterestRoleSpec(object):
     def _crud_actions(self):
         rv = {'read': (self.read_role or self.apex_role, f'{self.prefix}:read'),
               'edit': (self.edit_role or self.apex_role, f'{self.prefix}:write'),
-              'delete': (self.delete_role or self.apex_role, f'{self.prefix}:delete'),
-              'create': (self.apex_role, f'{self.prefix}:create')}
+              # 'delete': (self.delete_role or self.apex_role, f'{self.prefix}:delete'),
+              'delete': (None, f'{self.prefix}:delete'),
+              'create': (None, f'{self.prefix}:create')}
 
         # create does not actually need a role and no role will get checked.
         # The appropriate scope needs to be assigned when the user gets
         # permissions on the parent.
+
+        # delete is suppressed entirely for the moment. We'll only allow detach from
+        # parent by way of the parent:write role. We'll deal with actual delete later on.
         return rv
 
     def _authz_actions(self):
@@ -187,6 +191,8 @@ class InterestRoleSpec(object):
         for child_type in ac:
             if child_type == self.prefix:
                 continue
+            if role in self.get_permitted_roles(f'add_child:{child_type}'):
+                scopes.add(f'{child_type}:create')
             for r in self.get_effective_roles(role):
                 scopes.update(interests.type_codes[child_type].
                               model.role_spec.get_role_scopes(r))
@@ -206,3 +212,10 @@ class InterestRoleSpec(object):
             if ':' in action:
                 action = action.rsplit(':', 1)[0]
         return set(self.get_accepted_roles(self.actions[action][0]))
+
+    def check_permitted(self, action, roles):
+        permitted = self.get_permitted_roles(action)
+        for role in roles:
+            if role in permitted:
+                return True
+        return False

@@ -52,13 +52,13 @@ class InterestBase(object):
 
     def __init__(self, name):
         self._name = None
-        self._model_instance = None
+        self._model_instance: InterestModel = None
         self._status: InterestLifecycleStatus = None
         if isinstance(name, InterestModel):
             self._model_instance = name
         else:
             self._name = name
-            self._model_instance: InterestModel = self._commit_to_db()
+            self._commit_to_db()
 
     @property
     def name(self):
@@ -87,6 +87,9 @@ class InterestBase(object):
     def status(self, value):
         self._status = value
         self._commit_to_db()
+
+    def activate(self):
+        pass
 
     @property
     def id(self):
