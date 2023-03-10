@@ -2,6 +2,8 @@
 
 from typing import List
 from typing import Dict
+from inspect import signature
+from makefun import create_function
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -79,8 +81,22 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                 f"{id} Activated"}
         )
 
-    async def create_item(self):
-        raise NotImplementedError
+    def _inject_create_model(self, ep, param='item'):
+        orig_sig = signature(ep)
+        params = list(orig_sig.parameters.values())
+        orig_param = next(p for p in params if p.name == param)
+        index = params.index(orig_param)
+        new_param = orig_param.replace(name=orig_param.name, default=orig_param.default, kind=orig_param.kind,
+                                       annotation=self._actual.interest_class.tmodel_create)
+        params[index] = new_param
+        new_sig = orig_sig.replace(parameters=params)
+        return create_function(func_signature=new_sig, func_impl=ep)
+
+    def create_item(self, item, user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            item = self._actual.add_item(item, session=session)
+            rv = item.export(session=session)
+        return rv
 
     async def update_item(self):
         raise NotImplementedError
@@ -107,13 +123,16 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
         router.add_api_route("/{id}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
         router.add_api_route("/{id}/members", self.item_members, methods=["GET"],
                              response_model=Dict[str, List[MembershipInfoTModel]],
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
         router.add_api_route("/{id}/members/{role}", self.item_role_members, methods=["GET"],
                              response_model=List[MembershipInfoTModel],
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
+        router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
+                             response_model=self._actual.interest_class.tmodel,
+                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
         router.add_api_route("/{id}/activate", self.activate_item, methods=['POST'],
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
         return [router]

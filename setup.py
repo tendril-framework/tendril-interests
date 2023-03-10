@@ -33,6 +33,7 @@ core_dependencies = [
     'tendril-auth',
     'networkx',
     'polars',
+    'makefun',
 ]
 
 install_requires = core_dependencies + ['wheel']
