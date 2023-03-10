@@ -10,6 +10,7 @@ from tendril.authn.db.controller import get_user_by_id
 from tendril.db.models.interests import InterestModel
 from tendril.db.models.interests import InterestLifecycleStatus
 
+from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import RequiredRoleNotPresent
 from tendril.common.interests.exceptions import RequiredParentNotPresent
 from tendril.common.interests.exceptions import ActivationNotAllowedFromState
@@ -128,7 +129,16 @@ class InterestBase(object):
         return self._model_instance.role_spec.allowed_children
 
     @with_db
-    def assign_role(self, role, user, reference=None, session=None):
+    @require_permission('add_member', specifier='role',
+                        preprocessor=normalize_role_name, strip_auth=False,
+                        exceptions=[(('status', 'NEW'), ('role', 'self.model.role_spec.apex_role'))])
+    def assign_role(self, role=None, user=None, reference=None, auth_user=None, session=None):
+        if self.status != InterestLifecycleStatus.ACTIVE:
+            if self.status != InterestLifecycleStatus.NEW or role != self.model.role_spec.apex_role:
+                raise InterestStateException('add_member', self.id, self.name)
+        if not reference:
+            reference = {}
+        reference['by'] = auth_user.id if hasattr(auth_user, 'id') else auth_user
         membership = assign_role(self.id, user, role, reference=reference, session=session)
         scopes_assignable = self.model.role_spec.get_role_scopes(role)
         from tendril.authz.connector import add_user_scopes

@@ -1,5 +1,6 @@
 
 
+import enum
 from functools import cached_property
 from functools import wraps
 from tendril.authn.pydantic import UserStubTModel
@@ -234,9 +235,36 @@ class InterestRoleSpec(object):
         return False
 
 
+def _check_value(value, allowed):
+    if isinstance(value, enum.Enum):
+        value = value.value
+    if value == allowed:
+        return True
+    return False
+
+
+def _check_predicate(predicate, self, kwargs):
+    # This entire funciton and the reason it exists is likely to
+    # cause significant long term headaches. An alternative pathway
+    # to manage exceptions is probably needed.
+    attr, value = predicate
+    if value.startswith('self'):
+        parts = value.split('.')
+        value = self
+        for part in parts[1:]:
+            value = getattr(value, part)
+    if hasattr(self, attr):
+        if _check_value(getattr(self, attr), value):
+            return True
+    elif attr in kwargs.keys():
+        if _check_value(kwargs[attr], value):
+            return True
+
+
 def require_permission(action,
                        specifier=None, preprocessor=lambda x: x,
-                       strip_auth=True, required=True):
+                       strip_auth=True, required=True,
+                       exceptions=[]):
     def decorator(func):
         @wraps(func)
         def permission_check(self, *args, **kwargs):
@@ -244,7 +272,18 @@ def require_permission(action,
                 auth_user = kwargs.pop('auth_user', None)
             else:
                 auth_user = kwargs.get('auth_user', None)
-            if required and auth_user is None:
+
+            in_exception = False
+            for exception in exceptions:
+                for predicate in exception:
+                    if not _check_predicate(predicate, self, kwargs):
+                        print(predicate)
+                        break
+                else:
+                    in_exception = True
+                    break
+
+            if not in_exception and required and auth_user is None:
                 raise AttributeError("auth_user is required to execute "
                                      "this interest instance method")
             if not auth_user:
@@ -258,8 +297,8 @@ def require_permission(action,
                     laction = action
             else:
                 laction = action
-            if self.check_user_access(user=auth_user, action=laction, session=session):
-                # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
+            # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
+            if in_exception or self.check_user_access(user=auth_user, action=laction, session=session):
                 return func(self, *args, **kwargs)
             else:
                 raise AuthorizationRequiredError(auth_user, laction, self.id, self.name)
