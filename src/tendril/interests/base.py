@@ -4,7 +4,6 @@ from typing import List
 from typing import Optional
 from functools import cached_property
 
-from tendril.authn.pydantic import UserStubTMixin
 from tendril.utils.pydantic import TendrilTBaseModel
 
 from tendril.authn.db.controller import get_user_by_id
@@ -58,7 +57,7 @@ class InterestBase(object):
     tmodel_create = InterestBaseCreateTModel
     tmodel = InterestBaseTModel
 
-    def __init__(self, name):
+    def __init__(self, name, must_create=False, can_create=True, session=None):
         self._name = None
         self._model_instance: InterestModel = None
         self._status: InterestLifecycleStatus = None
@@ -66,7 +65,9 @@ class InterestBase(object):
             self._model_instance = name
         else:
             self._name = name
-            self._commit_to_db()
+            self._commit_to_db(must_create=must_create,
+                               can_create=can_create,
+                               session=session)
 
     @property
     def name(self):
@@ -287,12 +288,18 @@ class InterestBase(object):
             rv['permissions'] = sorted(self.model.role_spec.get_roles_permissions(user_roles))
         return rv
 
+    @property
+    def model_instance(self):
+        return self._model_instance
+
     @with_db
-    def _commit_to_db(self, session=None):
+    def _commit_to_db(self, must_create=False, can_create=True, session=None):
         kwargs = {'name': self.name,
                   'info': self.info,
                   'status': self._status,
                   'type': self.type_name,
+                  'must_create': must_create,
+                  'can_create': can_create,
                   'session': session}
         if self._model_instance:
             kwargs['id'] = self.id

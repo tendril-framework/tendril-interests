@@ -15,6 +15,8 @@ from tendril.db.controllers.interests import get_user_memberships
 from tendril.interests import InterestBase
 from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
+from tendril.common.interests.exceptions import TypeMismatchError
+
 
 class GenericInterestLibrary(object):
     interest_class = InterestBase
@@ -44,7 +46,10 @@ class GenericInterestLibrary(object):
 
     @with_db
     def add_item(self, item, session=None):
-        pass
+        if item.type != self.interest_class.model.type_name:
+            raise TypeMismatchError(item.type, self.interest_class.model.type_name)
+        item = self.interest_class(item.name, must_create=True, session=session)
+        return item
 
     @with_db
     def delete_item(self, id=None, name=None, session=None):

@@ -11,6 +11,9 @@ from tendril.db.models.interests import InterestRoleModel
 from tendril.db.models.interests import InterestMembershipModel
 from tendril.db.models.interests import InterestLogEntryModel
 
+from tendril.common.interests.exceptions import InterestAlreadyExists
+from tendril.common.interests.exceptions import InterestNotFound
+
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
@@ -81,16 +84,18 @@ def get_interest(id=None, name=None, type=None, session=None):
 
 
 @with_db
-def upsert_interest(id=None, name=None, status=None, info=None, type=None, session=None):
+def upsert_interest(id=None, name=None, status=None, info=None, type=None,
+                    must_create=False, can_create=True, session=None):
     if name is None:
         raise AttributeError("name cannot be None")
-
     try:
         existing = get_interest(id=id, name=name, type=type, session=session)
         interest = existing
+        if must_create:
+            raise InterestAlreadyExists(type, name)
     except NoResultFound:
-        if id:
-            raise AttributeError(f"Specific id {id} provided but not found in database.")
+        if id or not can_create:
+            raise InterestNotFound(type_name=type, name=name, id=id)
         qmodel = _type_discriminator(type)
         interest = qmodel(name=name, info=info)
     if name:
@@ -100,6 +105,7 @@ def upsert_interest(id=None, name=None, status=None, info=None, type=None, sessi
     if status:
         interest.status = status.value
     session.add(interest)
+    session.flush()
     return interest
 
 
