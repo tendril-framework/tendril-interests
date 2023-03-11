@@ -81,6 +81,8 @@ class InterestManager(object):
             allowed_children = self._type_spec[item]['allowed_children']
             if allowed_children == ["*"]:
                 allowed_children = [itemtype for itemtype in self._type_spec.keys()]
+            while item in allowed_children:
+                allowed_children.remove(item)
             for child in allowed_children:
                 list_of_edges.append((item, child))
         return list_of_edges
@@ -93,7 +95,7 @@ class InterestManager(object):
         return interest_tree
 
     def _possible_type_parents(self, type_name):
-        paths = networkx.all_simple_paths(self.type_tree, "platform", type_name)
+        paths = networkx.all_simple_paths(self.type_tree, self._tree_root(), type_name)
         parents = []
         [parents.append(x[-2])
          for x in sorted(paths, key=lambda x: len(x))
@@ -101,7 +103,10 @@ class InterestManager(object):
         return parents
 
     def _possible_type_paths(self, type_name):
-        return list(networkx.all_simple_paths(self.type_tree, "platform", type_name))
+        return list(networkx.all_simple_paths(self.type_tree, self._tree_root(), type_name))
+
+    def _tree_root(self):
+        return list(networkx.topological_sort(self.type_tree))[0]
 
     def finalize(self):
         self._type_codes = {
@@ -116,13 +121,14 @@ class InterestManager(object):
             for key, cls in self._type_codes.items()
         }
 
-        self.type_tree = self._generate_tree()
+        if len(self._type_spec.keys()) > 1:
+            self.type_tree = self._generate_tree()
 
-        self.possible_parents = {x: self._possible_type_parents(x)
-                                 for x in self._type_codes}
+            self.possible_parents = {x: self._possible_type_parents(x)
+                                     for x in self._type_codes}
 
-        self.possible_paths = {x: self._possible_type_paths(x)
-                               for x in self._type_codes}
+            self.possible_paths = {x: self._possible_type_paths(x)
+                                   for x in self._type_codes}
 
         [self.all_actions.update(
             {f'{t.model.type_name}:{a}': r
