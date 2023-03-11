@@ -330,6 +330,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
             router.add_api_route("/{id}/children", self.item_children, methods=["GET"],
                                  response_model=List[Union[tuple(child_models)]],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
-        router.add_api_route("/{id}/children/add", self.item_add_child, methods=["POST"],
-                             dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
+            router.add_api_route("/{id}/children/add", self.item_add_child, methods=["POST"],
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
         return [router]
