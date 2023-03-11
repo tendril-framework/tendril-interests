@@ -87,20 +87,22 @@ def _get_interest_user_memberships(collector, interest, user_id,
                                    session=None):
     # This feels terrible.
     # Also, delegations needs to be tracked down the recursion.
+    to_inherit = set()
     for role in inherited_roles:
         if role not in interest.model.role_spec.roles:
             continue
+        to_inherit.add(role)
         collector.add_membership(interest, role, False, True)
     roles = set(interest.get_user_roles(user_id, session=session))
     for role in list(roles):
+        to_inherit.add(role)
         collector.add_membership(interest, role, False, is_inherited)
         if include_delegated:
             interest_rs = interest.model.role_spec
             for drole in interest_rs.get_delegated_roles(role):
-                roles.add(drole)
+                to_inherit.add(drole)
                 collector.add_membership(interest, drole, True, is_inherited)
     if include_inherited:
-        to_inherit = roles
         for child in interest.children(limited=False, session=session):
             if not child.model.role_spec.inherits_from_parent:
                 continue
