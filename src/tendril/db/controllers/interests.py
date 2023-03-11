@@ -267,6 +267,7 @@ def get_parents(interest, type=None, limited=None, session=None):
 
     return q.filter(*filters).all()
 
+
 @with_db
 def get_children(interest, type=None, child_type=None, limited=None, session=None):
     if not limited and not child_type:
