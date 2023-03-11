@@ -26,6 +26,7 @@ from tendril.db.controllers.interests import add_child
 from tendril.db.controllers.interests import get_children
 from tendril.db.controllers.interests import get_parents
 
+from tendril.authz.roles.interests import require_state
 from tendril.authz.roles.interests import require_permission
 from tendril.authz.roles.interests import normalize_role_name
 from tendril.authz.roles.interests import normalize_type_name
@@ -129,13 +130,12 @@ class InterestBase(object):
         return self._model_instance.role_spec.allowed_children
 
     @with_db
+    @require_state(InterestLifecycleStatus.ACTIVE,
+                   exceptions=[(('status', 'NEW'), ('role', 'self.model.role_spec.apex_role'))])
     @require_permission('add_member', specifier='role',
                         preprocessor=normalize_role_name, strip_auth=False,
                         exceptions=[(('status', 'NEW'), ('role', 'self.model.role_spec.apex_role'))])
     def assign_role(self, role=None, user=None, reference=None, auth_user=None, session=None):
-        if self.status != InterestLifecycleStatus.ACTIVE:
-            if self.status != InterestLifecycleStatus.NEW or role != self.model.role_spec.apex_role:
-                raise InterestStateException('add_member', self.id, self.name)
         if not reference:
             reference = {}
         reference['by'] = auth_user.id if hasattr(auth_user, 'id') else auth_user
@@ -237,7 +237,13 @@ class InterestBase(object):
                          child_type=child_type, limited=limited, session=session)
         )
 
+    @staticmethod
+    def _get_child_type(cls, child, *a, **k):
+        return child.type_name
+
     @with_db
+    @require_state(InterestLifecycleStatus.ACTIVE)
+    @require_permission('add_child', specifier=_get_child_type, preprocessor=normalize_type_name)
     def add_child(self, child, limited=False, session=None):
         return add_child(child, self.id, self.type_name,
                          limited=limited, session=session)

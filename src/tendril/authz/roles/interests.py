@@ -1,11 +1,13 @@
 
 
 import enum
+from collections.abc import Iterable
 from functools import cached_property
 from functools import wraps
 from tendril.authn.pydantic import UserStubTModel
 from tendril.utils.pydantic import TendrilTBaseModel
 from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import AuthorizationRequiredError
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEBUG)
@@ -291,16 +293,47 @@ def require_permission(action,
             session = kwargs.get('session', None)
             if specifier:
                 s = kwargs.get(specifier, None)
+                if callable(s):
+                    s = s(self, *args, **kwargs)
                 if s:
                     laction = f'{action}:{preprocessor(s)}'
                 else:
                     laction = action
             else:
                 laction = action
-            # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
+            logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
             if in_exception or self.check_user_access(user=auth_user, action=laction, session=session):
                 return func(self, *args, **kwargs)
             else:
                 raise AuthorizationRequiredError(auth_user, laction, self.id, self.name)
         return permission_check
+    return decorator
+
+
+def require_state(states, exceptions=[]):
+    def decorator(func):
+        @wraps(func)
+        def state_check(self, *args, **kwargs):
+            in_exception = False
+            for exception in exceptions:
+                for predicate in exception:
+                    if not _check_predicate(predicate, self, kwargs):
+                        print(predicate)
+                        break
+                else:
+                    in_exception = True
+                    break
+
+            logger.debug(f"Checking state of {self} for '{states}'")
+            if not in_exception:
+                if isinstance(states, Iterable):
+                    if self.status not in states:
+                        raise InterestStateException(self.status, states,
+                                                     func.__name__, self.id, self.name)
+                else:
+                    if self.status != states:
+                        raise InterestStateException(self.status, states,
+                                                     func.__name__, self.id, self.name)
+            return func(self, *args, **kwargs)
+        return state_check
     return decorator

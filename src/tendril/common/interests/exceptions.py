@@ -19,9 +19,15 @@ class InterestActionException(InterestException):
 class InterestStateException(InterestActionException):
     status_code = 406
 
+    def __init__(self, state, allowed, *args, **kwargs):
+        super(InterestStateException, self).__init__(*args, **kwargs)
+        self.state = state
+        self.allowed = allowed
+
     def __str__(self):
         return f"The interest {self.interest_id}, {self.interest_name} is not in a " \
-               f"state which allows '{self.action}'."
+               f"state which allows '{self.action}'. This is only in allowed in " \
+               f"'{self.allowed}', but it is '{self.state}'"
 
 
 class AuthorizationRequiredError(InterestActionException):
