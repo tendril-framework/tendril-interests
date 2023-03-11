@@ -9,6 +9,7 @@ from tendril.authn.db.controller import preprocess_user
 from tendril.db.models.interests import InterestModel
 from tendril.db.models.interests import InterestRoleModel
 from tendril.db.models.interests import InterestMembershipModel
+from tendril.db.models.interests import InterestAssociationModel
 from tendril.db.models.interests import InterestLogEntryModel
 
 from tendril.common.interests.exceptions import InterestAlreadyExists
@@ -114,7 +115,7 @@ def preprocess_interest(interest, type=None, session=None):
     if isinstance(interest, int):
         return interest
     elif isinstance(interest, str):
-        interest = get_interest(interest, type, session=session)
+        interest = get_interest(name=interest, type=type, session=session)
         return interest.id
     elif isinstance(interest, InterestModel):
         return interest.id
@@ -214,24 +215,76 @@ def remove_user(interest, user, reference=None, session=None):
 
 
 @with_db
-def set_parent(interest, parent, type=None, session=None):
-    interest = get_interest(interest, session=session)
-    parent_id = preprocess_interest(parent)
-    interest.parent_id = parent_id
-    session.add(interest)
-    return interest
+def get_association(parent, child, session=None):
+    kwargs = {
+        'parent_id': preprocess_interest(parent, session=session),
+        'child_id': preprocess_interest(child, session=session),
+    }
+    q = session.query(InterestAssociationModel)\
+        .filter_by(parent_id=kwargs['parent_id'])\
+        .filter_by(child_id=kwargs['child_id'])
+    return q.one()
 
 
 @with_db
-def get_parent(interest, type=None, session=None):
-    interest = get_interest(interest, type, session=session)
-    return interest.parent
+def add_child(child, interest, type=None, limited=False, session=None):
+    kwargs = {
+        'parent_id': preprocess_interest(interest, session=session),
+        'child_id': preprocess_interest(child, session=session),
+        'limited': limited,
+    }
+
+    interest = get_interest(kwargs['parent_id'], type=type, session=session)
+    child = get_interest(kwargs['child_id'], session=session)
+    if not any(x in interest.role_spec.allowed_children for x in ['*', child.type_name]):
+        raise TypeError(f"'{child.type}' not an allowed child type for '{interest.type}'")
+
+    try:
+        existing = get_association(parent=kwargs['parent_id'],
+                                   child=kwargs['child_id'], session=session)
+        if not existing.limited and limited:
+            existing.limited = True
+        association = existing
+    except NoResultFound:
+        association = InterestAssociationModel(**kwargs)
+    session.add(association)
+    return association
 
 
 @with_db
-def get_children(interest, type=None, session=None):
-    interest = get_interest(interest, type, session=session)
-    return interest.children
+def get_parents(interest, type=None, limited=None, session=None):
+    if limited is None:
+        interest = get_interest(interest, type, session=session)
+        return interest.parents
+    filters = []
+    interest_id = preprocess_interest(interest, session=session)
+
+    q = session.query(InterestModel)\
+        .join(InterestAssociationModel, onclause=(InterestModel.id == InterestAssociationModel.parent_id))
+
+    filters.append(InterestAssociationModel.child_id == interest_id)
+    filters.append(InterestAssociationModel.limited == limited)
+
+    return q.filter(*filters).all()
+
+@with_db
+def get_children(interest, type=None, child_type=None, limited=None, session=None):
+    if not limited and not child_type:
+        interest = get_interest(interest, type, session=session)
+        return interest.children
+    filters = []
+    interest_id = preprocess_interest(interest, session=session)
+
+    q = session.query(InterestModel)\
+        .join(InterestAssociationModel, onclause=(InterestModel.id == InterestAssociationModel.child_id))
+
+    filters.append(InterestAssociationModel.parent_id == interest_id)
+    if limited is not None:
+        filters.append(InterestAssociationModel.limited == limited)
+    if child_type is not None:
+        filters.append(InterestModel.type == child_type)
+
+    return q.filter(*filters).all()
 
 
 @with_db

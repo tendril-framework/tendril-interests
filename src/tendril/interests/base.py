@@ -22,9 +22,9 @@ from tendril.db.controllers.interests import get_role_users
 from tendril.db.controllers.interests import get_user_roles
 from tendril.db.controllers.interests import remove_role
 from tendril.db.controllers.interests import remove_user
+from tendril.db.controllers.interests import add_child
 from tendril.db.controllers.interests import get_children
-from tendril.db.controllers.interests import set_parent
-from tendril.db.controllers.interests import get_parent
+from tendril.db.controllers.interests import get_parents
 
 from tendril.authz.roles.interests import require_permission
 from tendril.authz.roles.interests import normalize_role_name
@@ -220,38 +220,27 @@ class InterestBase(object):
                           for x in self.get_role_users(d_role, session=session)]
             return rv
 
-    @with_db
-    def get_parent(self, session=None):
-        return get_parent(self.name, session=session)
+    def _repack_interest_list(self, ilist):
+        from tendril.interests import type_codes
+        return [type_codes[x.type](x) for x in ilist]
 
     @with_db
-    def set_parent(self, parent, session=None):
-        if not isinstance(parent, self.__class__):
-            parent = get_interest(parent, session=session)
-        if '*' not in parent.allowed_children and \
-                self.type_name not in parent.allowed_children:
-            raise TypeError(f"Interest of type {parent.type_name} does not "
-                            f"accept children of type {self.type_name}")
-        else:
-            parent.clear_children_cache()
-            parent = parent.id
-        return set_parent(self.name, parent, session=session)
+    def parents(self, limited=None, session=None):
+        return self._repack_interest_list(
+            get_parents(self.id, limited=limited, session=session)
+        )
 
-    @cached_property
-    def all_children(self):
-        return get_children(self.id, self.type_name)
+    @with_db
+    def children(self, child_type=None, limited=None, session=None):
+        return self._repack_interest_list(
+            get_children(self.id, self.type_name,
+                         child_type=child_type, limited=limited, session=session)
+        )
 
-    def clear_children_cache(self):
-        if 'all_children' in self.__dict__:
-            del self.all_children
-
-    def children(self, child_type):
-        from tendril import interests
-        child_class = getattr(interests, child_type)
-        if not child_class:
-            return [x for x in self.all_children if x.type == child_type]
-        else:
-            return [child_class(x.name) for x in self.all_children if x.type == child_type]
+    @with_db
+    def add_child(self, child, limited=False, session=None):
+        return add_child(child, self.id, self.type_name,
+                         limited=limited, session=session)
 
     @with_db
     def add_artefact(self, artefact, session=None):

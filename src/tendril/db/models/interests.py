@@ -3,6 +3,7 @@
 from sqlalchemy import Enum
 from sqlalchemy import Column
 from sqlalchemy import String
+from sqlalchemy import Boolean
 from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 from sqlalchemy import UniqueConstraint
@@ -26,8 +27,10 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):
+    id = None
     parent_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
     child_id = mapped_column(ForeignKey("Interest.id"), primary_key=True)
+    limited = Column(Boolean, default=False, nullable=False)
 
 
 class InterestModel(DeclBase, BaseMixin, TimestampMixin):

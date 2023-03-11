@@ -244,6 +244,9 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              include_roles=True)
         return rv
 
+    async def add_item_child(self):
+        raise NotImplementedError
+
     async def update_item(self):
         raise NotImplementedError
 
@@ -256,8 +259,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     async def itme_children_of_type(self):
         raise NotImplementedError
 
-    async def add_item_child(self):
-        raise NotImplementedError
 
     def generate(self, name):
         desc = f'{name} Interest API'
