@@ -4,7 +4,6 @@ from typing import List
 from typing import Dict
 from typing import Union
 
-import executing
 from pydantic import Field
 from inspect import signature
 from makefun import create_function
@@ -259,11 +258,29 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                   for x in item.parents(auth_user=user, **kwargs, session=session)]
         return rv
 
-    async def item_children(self):
-        raise NotImplementedError
+    def item_children(self, request: Request, id: int,
+                      user: AuthUserModel = auth_spec(),
+                      child_type: str = None,
+                      exclude_limited: bool = True):
+        kwargs = {}
+        rv = []
+        if exclude_limited:
+            kwargs['limited'] = False
+        if child_type:
+            kwargs['child_type'] = child_type
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            rv = [x.export(auth_user=user, session=session)
+                  for x in item.children(auth_user=user, **kwargs, session=session)]
+        return rv
 
-    async def add_item_child(self):
-        raise NotImplementedError
+    def item_add_child(self, request: Request, id: int,
+                       child_id: int, limited: bool = False,
+                       user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            asn = item.add_child(child_id, limited=limited,
+                                 auth_user=user, session=session)
 
     async def update_item(self):
         raise NotImplementedError
@@ -271,13 +288,9 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     async def delete_item(self):
         raise NotImplementedError
 
-    async def itme_children_of_type(self):
-        raise NotImplementedError
-
     def generate(self, name):
         desc = f'{name} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
-        from tendril import interests
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
         router.add_api_route("", self.items, methods=["GET"],
@@ -308,4 +321,15 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                  response_model=List[Union[tuple(parent_models)]],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
 
+        from tendril import interests
+        ac = self._actual.interest_class.model.role_spec.allowed_children
+        if '*' in ac:
+            ac = interests.type_codes.keys()
+        child_models = [interests.type_codes[x].tmodel for x in ac]
+        if len(child_models):
+            router.add_api_route("/{id}/children", self.item_children, methods=["GET"],
+                                 response_model=List[Union[tuple(child_models)]],
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
+        router.add_api_route("/{id}/children/add", self.item_add_child, methods=["POST"],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
         return [router]

@@ -275,7 +275,9 @@ class InterestBase(object):
         )
 
     @with_db
-    def children(self, child_type=None, limited=None, session=None):
+    @require_permission('read_children', strip_auth=False, required=False,
+                        specifier='child_type', preprocessor=normalize_type_name)
+    def children(self, child_type=None, limited=None, auth_user=None, session=None):
         return self._repack_interest_list(
             get_children(self.id, self.type_name,
                          child_type=child_type, limited=limited, session=session)
@@ -283,6 +285,8 @@ class InterestBase(object):
 
     @staticmethod
     def _get_child_type(cls, child, *a, **k):
+        if isinstance(child, int):
+            child = get_interest(id=child)
         return child.type_name
 
     @with_db
