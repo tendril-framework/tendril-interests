@@ -2,6 +2,10 @@
 
 from typing import List
 from typing import Dict
+from typing import Union
+
+import executing
+from pydantic import Field
 from inspect import signature
 from makefun import create_function
 
@@ -159,7 +163,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                 f"{id} Activated"}
         )
 
-
     async def item_members(self, request: Request, id: int,
                            user: AuthUserModel = auth_spec(),
                            include_effective: bool=False,
@@ -244,6 +247,21 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              include_roles=True)
         return rv
 
+    async def item_parents(self, request: Request, id: int,
+                           user: AuthUserModel = auth_spec(),
+                           exclude_limited: bool = True):
+        kwargs = {}
+        if exclude_limited:
+            kwargs['limited'] = False
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            rv = [x.export(auth_user=user, session=session)
+                  for x in item.parents(auth_user=user, **kwargs, session=session)]
+        return rv
+
+    async def item_children(self):
+        raise NotImplementedError
+
     async def add_item_child(self):
         raise NotImplementedError
 
@@ -253,16 +271,13 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     async def delete_item(self):
         raise NotImplementedError
 
-    async def item_children(self):
-        raise NotImplementedError
-
     async def itme_children_of_type(self):
         raise NotImplementedError
-
 
     def generate(self, name):
         desc = f'{name} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
+        from tendril import interests
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
         router.add_api_route("", self.items, methods=["GET"],
@@ -285,4 +300,12 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         router.add_api_route("/{id}/members/{role}/add", self.item_grant_role, methods=["POST"],
                              response_model=self._actual.interest_class.tmodel,
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
+
+        parent_models = [interests.type_codes[x].tmodel for x in interests.possible_parents[prefix]]
+
+        if len(parent_models):
+            router.add_api_route("/{id}/parents", self.item_parents, methods=["GET"],
+                                 response_model=List[Union[tuple(parent_models)]],
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
+
         return [router]

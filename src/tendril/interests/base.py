@@ -2,6 +2,7 @@
 
 from typing import List
 from typing import Optional
+from typing import Literal
 from functools import cached_property
 
 from tendril.utils.pydantic import TendrilTBaseModel
@@ -14,6 +15,7 @@ from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import RequiredRoleNotPresent
 from tendril.common.interests.exceptions import RequiredParentNotPresent
 from tendril.common.interests.exceptions import ActivationNotAllowedFromState
+from tendril.common.interests.exceptions import AuthorizationRequiredError
 
 from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests import upsert_interest
@@ -38,7 +40,7 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 class InterestBaseCreateTModel(TendrilTBaseModel):
     name: str
-    type: str
+    type: Literal['interest']
     info: dict
 
 
@@ -164,7 +166,11 @@ class InterestBase(object):
         for role in self.get_user_roles(user, session=session):
             rv.update(self.model.role_spec.get_effective_roles(role))
         if self.model.role_spec.inherits_from_parent:
-            pass
+            recognized_roles = set(self.model.role_spec.roles)
+            for parent in self.parents(limited=False, session=session):
+                roles = parent.get_user_effective_roles(user, session=session)
+                parent_roles = roles.intersection(recognized_roles)
+                rv.update(parent_roles)
         return rv
 
     @with_db
@@ -192,9 +198,24 @@ class InterestBase(object):
         infodict.update(prov)
         return infodict
 
+    @staticmethod
+    def _merge_membership_dict(master, new, roles):
+        for role in new.keys():
+            if role not in roles:
+                continue
+            master.setdefault(role, [])
+            existing_users = [x['user']['user_id'] for x in master[role]]
+            for m in new[role]:
+                if m['user']['user_id'] in existing_users:
+                    continue
+                m['inherited'] = True
+                master[role].append(m)
+        return master
+
     @with_db
-    @require_permission('read_members', specifier='role', preprocessor=normalize_role_name)
-    def memberships(self, role=None, session=None,
+    @require_permission('read_members', strip_auth=False,
+                        specifier='role', preprocessor=normalize_role_name)
+    def memberships(self, role=None, session=None, auth_user=None,
                     include_effective=True, include_inherited=True):
         if not role:
             rv = {}
@@ -210,6 +231,15 @@ class InterestBase(object):
                     rv[rname].append(
                         self._build_ms_info_dict(membership.user, rprov)
                     )
+            if include_inherited and self.model.role_spec.inherits_from_parent:
+                for parent in self.parents(limited=False, session=session):
+                    try:
+                        pm = parent.memberships(role=role, auth_user=auth_user, session=session,
+                                                include_effective=include_effective,
+                                                include_inherited=include_inherited)
+                        self._merge_membership_dict(rv, pm, self.model.role_spec.roles)
+                    except AuthorizationRequiredError:
+                        pass
             return rv
         else:
             rv = [self._build_ms_info_dict(x, {'delegated': False, 'inherited': False})
@@ -218,6 +248,18 @@ class InterestBase(object):
                 for d_role in self.model.role_spec.get_alternate_roles(role):
                     rv = [self._build_ms_info_dict(x, {'delegated': True, 'inherited': False})
                           for x in self.get_role_users(d_role, session=session)]
+            if include_inherited and self.model.role_spec.inherits_from_parent:
+                for parent in self.parents(limited=False, session=session):
+                    existing_users = [x['user']['user_id'] for x in rv]
+                    if role in parent.model.role_spec.roles:
+                        parent_members = parent.memberships(auth_user=auth_user, role=role, session=session,
+                                                            include_effective=include_effective,
+                                                            include_inherited=True)
+                        for member in parent_members:
+                            if member['user']['user_id'] in existing_users:
+                                continue
+                            member['inherited'] = True
+                            rv.append(member)
             return rv
 
     @staticmethod
@@ -226,6 +268,7 @@ class InterestBase(object):
         return [type_codes[x.type](x) for x in ilist]
 
     @with_db
+    @require_permission('read', required=False)
     def parents(self, limited=None, session=None):
         return self._repack_interest_list(
             get_parents(self.id, limited=limited, session=session)

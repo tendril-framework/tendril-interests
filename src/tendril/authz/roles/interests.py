@@ -301,7 +301,7 @@ def require_permission(action,
                     laction = action
             else:
                 laction = action
-            logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
+            # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
             if in_exception or self.check_user_access(user=auth_user, action=laction, session=session):
                 return func(self, *args, **kwargs)
             else:
@@ -324,7 +324,7 @@ def require_state(states, exceptions=[]):
                     in_exception = True
                     break
 
-            logger.debug(f"Checking state of {self} for '{states}'")
+            # logger.debug(f"Checking state of {self} for '{states}'")
             if not in_exception:
                 if isinstance(states, Iterable):
                     if self.status not in states:
