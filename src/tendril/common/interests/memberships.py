@@ -73,20 +73,56 @@ class UserMembershipCollector(object):
         return rv
 
 
+def _rewrap_interest(model):
+    from tendril.interests import type_codes
+    type_name = model.type
+    return type_codes[type_name](model)
+
+
+def _get_interest_user_memberships(collector, interest, user_id,
+                                   include_delegated=True,
+                                   include_inherited=True,
+                                   is_inherited=False,
+                                   inherited_roles=[],
+                                   session=None):
+    # This feels terrible.
+    # Also, delegations needs to be tracked down the recursion.
+    for role in inherited_roles:
+        if role not in interest.model.role_spec.roles:
+            continue
+        collector.add_membership(interest, role, False, True)
+    roles = set(interest.get_user_roles(user_id, session=session))
+    for role in list(roles):
+        collector.add_membership(interest, role, False, is_inherited)
+        if include_delegated:
+            interest_rs = interest.model.role_spec
+            for drole in interest_rs.get_delegated_roles(role):
+                roles.add(drole)
+                collector.add_membership(interest, drole, True, is_inherited)
+    if include_inherited:
+        to_inherit = roles
+        for child in interest.children(limited=False, session=session):
+            if not child.model.role_spec.inherits_from_parent:
+                continue
+            _get_interest_user_memberships(collector, child, user_id,
+                                           include_delegated=include_delegated,
+                                           include_inherited=include_inherited,
+                                           is_inherited=True, inherited_roles=to_inherit,
+                                           session=session)
+
+
 def user_memberships(user_id,
                      include_delegated=True,
                      include_inherited=True):
     from tendril.db.controllers import interests
-    from tendril.interests import type_codes
     with get_session() as session:
         memberships = interests.get_user_memberships(user=user_id, session=session)
         rv = UserMembershipCollector()
         for m in memberships:
-            rv.add_membership(m.interest, m.role.name, False, False)
-            if include_delegated:
-                type_code = m.interest.type
-                interest_rs = type_codes[type_code].model.role_spec
-                for role in interest_rs.get_delegated_roles(m.role.name):
-                    rv.add_membership(m.interest, role, True, False)
+            _get_interest_user_memberships(rv, _rewrap_interest(m.interest), user_id,
+                                           include_delegated=include_delegated,
+                                           include_inherited=include_inherited,
+                                           is_inherited=False, inherited_roles=[],
+                                           session=session)
         rv.process()
     return rv.render()
