@@ -220,7 +220,8 @@ class InterestBase(object):
                           for x in self.get_role_users(d_role, session=session)]
             return rv
 
-    def _repack_interest_list(self, ilist):
+    @staticmethod
+    def _repack_interest_list(ilist):
         from tendril.interests import type_codes
         return [type_codes[x.type](x) for x in ilist]
 
