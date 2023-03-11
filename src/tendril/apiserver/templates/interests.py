@@ -314,6 +314,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              response_model=self._actual.interest_class.tmodel,
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
 
+        from tendril import interests
         parent_models = [interests.type_codes[x].tmodel for x in interests.possible_parents[prefix]]
 
         if len(parent_models):
@@ -321,7 +322,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                  response_model=List[Union[tuple(parent_models)]],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
 
-        from tendril import interests
         ac = self._actual.interest_class.model.role_spec.allowed_children
         if '*' in ac:
             ac = interests.type_codes.keys()
