@@ -179,11 +179,7 @@ class InterestBase(object):
 
     @with_db
     def get_role_accepted_users(self, role, session=None):
-        users = []
-        for d_role in self.model.role_spec.get_accepted_roles(role):
-            for user in get_role_users(self.id, d_role, session=session):
-                users.append(user)
-        return users
+        return self.memberships(role=role, session=session)
 
     @with_db
     def check_user_access(self, user, action, session=None):
@@ -213,10 +209,11 @@ class InterestBase(object):
         return master
 
     @with_db
-    @require_permission('read_members', strip_auth=False,
+    @require_permission('read_members', strip_auth=False, required=False,
                         specifier='role', preprocessor=normalize_role_name)
     def memberships(self, role=None, session=None, auth_user=None,
                     include_effective=True, include_inherited=True):
+        # TODO Consider building this once and caching it.
         if not role:
             rv = {}
             session.add(self._model_instance)

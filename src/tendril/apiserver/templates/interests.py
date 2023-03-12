@@ -32,7 +32,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     async def items(self, request: Request,
                     user: AuthUserModel = auth_spec(),
                     include_roles: bool = False,
-                    include_permissions: bool = False):
+                    include_permissions: bool = False,
+                    include_inherited: bool = True):
         """
         Get a list of all items in this library.
 
@@ -49,12 +50,14 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                       interests is to be provided.
          - **include_roles :** Include the user's roles in the response.
          - **include_permissions :** Include the user's permissions in the response.
+         - **include_inherited : ** Include interests in which the user's access inherited.
         """
         with get_session() as session:
             rv = [x.export(auth_user=user, session=session,
                            include_roles=include_roles,
                            include_permissions=include_permissions)
-                  for x in self._actual.items(user=user, session=session)]
+                  for x in self._actual.items(user=user, session=session,
+                                              include_inherited=include_inherited,)]
         return rv
 
     async def item(self, request: Request, id: int,

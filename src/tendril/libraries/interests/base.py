@@ -15,6 +15,7 @@ from tendril.db.controllers.interests import get_user_memberships
 from tendril.interests import InterestBase
 from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
+from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.exceptions import TypeMismatchError
 
 
@@ -29,15 +30,23 @@ class GenericInterestLibrary(object):
         return [x.ident for x in self.items()]
 
     @with_db
-    def items(self, user=None, session=None):
+    def items(self, user=None, include_inherited=False, session=None):
         if not user:
             return [self.interest_class(x) for x in
                     get_interests(type=self.interest_class, session=session)]
-        else:
+        if not include_inherited:
             return [self.interest_class(x.interest) for x in
                     get_user_memberships(user,
                                          interest_type=self.interest_class.model,
                                          session=session)]
+        else:
+            iids = user_memberships(
+                user_id=user,
+                interest_types=[self.interest_class.model.type_name],
+                include_inherited=include_inherited,
+            ).interest_ids()
+            return [self.interest_class(get_interest(id=x, session=session))
+                    for x in iids]
 
     @with_db
     def item(self, id=None, name=None, session=None):

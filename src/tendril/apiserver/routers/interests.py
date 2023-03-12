@@ -48,7 +48,7 @@ async def get_user_memberships(user: AuthUserModel = auth_spec(),
                                include_inherited: bool = False):
     return user_memberships(user,
                             include_delegated=include_delegated,
-                            include_inherited=include_inherited)
+                            include_inherited=include_inherited).render()
 
 
 def _generate_routers():
