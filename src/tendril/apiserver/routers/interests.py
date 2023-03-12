@@ -11,6 +11,10 @@ from tendril.libraries import interests
 from tendril.interests import type_spec
 from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.memberships import UserMembershipsTModel
+from tendril.config import INTERESTS_API_ENABLED
+
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 interests_router = APIRouter(prefix='/interests',
@@ -56,7 +60,10 @@ def _generate_routers():
     return interest_routers
 
 
-routers = [
-    interests_router
-] + _generate_routers()
-
+if INTERESTS_API_ENABLED:
+    routers = [
+        interests_router
+    ] + _generate_routers()
+else:
+    logger.info("Not creating Interest API routers.")
+    routers = []
