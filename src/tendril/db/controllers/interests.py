@@ -73,7 +73,7 @@ def get_interests(type=None, user=None, session=None):
 
 
 @with_db
-def get_interest(id=None, name=None, type=None, session=None):
+def get_interest(id=None, name=None, type=None, raise_if_none=True, session=None):
     filters = []
     qmodel = _type_discriminator(type)
     if id:
@@ -81,12 +81,21 @@ def get_interest(id=None, name=None, type=None, session=None):
     elif name:
         filters.append(qmodel.name == name)
     q = session.query(qmodel).filter(*filters)
-    return q.one()
+    try:
+        return q.one()
+    except NoResultFound:
+        if raise_if_none:
+            raise
+        return None
 
 
 @with_db
 def upsert_interest(id=None, name=None, status=None, info=None, type=None,
-                    must_create=False, can_create=True, session=None):
+                    must_create=False, can_create=True, session=None, **kwargs):
+    # kwargs are the additional fields which apply to the individual
+    # interest classes. A more robust way to deal with them is needed.
+    # Maybe actually use ORM the way it was meant to instead of this
+    # horrible chimera.
     if name is None:
         raise AttributeError("name cannot be None")
     try:
@@ -105,6 +114,9 @@ def upsert_interest(id=None, name=None, status=None, info=None, type=None,
         interest.info = info
     if status:
         interest.status = status.value
+    for k, v in kwargs.items():
+        if v:
+            setattr(interest, k, v)
     session.add(interest)
     session.flush()
     return interest

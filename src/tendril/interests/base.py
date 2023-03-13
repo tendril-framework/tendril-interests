@@ -60,18 +60,26 @@ class InterestBase(object):
     model = InterestModel
     tmodel_create = InterestBaseCreateTModel
     tmodel = InterestBaseTModel
+    additional_fields = []
 
-    def __init__(self, name, must_create=False, can_create=True, session=None):
+    def __init__(self, name, info=None, must_create=False,
+                 can_create=True, session=None):
         self._name = None
+        self._info = None
         self._model_instance: InterestModel = None
         self._status: InterestLifecycleStatus = None
         if isinstance(name, InterestModel):
             self._model_instance = name
         else:
             self._name = name
+            self._info = info or {}
             self._commit_to_db(must_create=must_create,
                                can_create=can_create,
                                session=session)
+
+    @property
+    def type_name(self):
+        return self.model.type_name
 
     @property
     def name(self):
@@ -81,15 +89,19 @@ class InterestBase(object):
             return self._model_instance.name
 
     @property
-    def type_name(self):
-        return self.model.type_name
-
-    @property
     def ident(self):
         return f"{self.__class__.__name__} {self.name}"
 
-    def _info(self):
-        return {}
+    @property
+    def info(self):
+        if self._info is not None:
+            return self._info
+        else:
+            return self._model_instance.info
+
+    @property
+    def id(self):
+        return self._model_instance.id
 
     @property
     def status(self):
@@ -114,14 +126,6 @@ class InterestBase(object):
             pass
         self._model_instance.status = InterestLifecycleStatus.ACTIVE
         session.add(self._model_instance)
-
-    @property
-    def id(self):
-        return self._model_instance.id
-
-    @property
-    def info(self):
-        return self._info()
 
     @property
     def roles(self):
@@ -330,6 +334,8 @@ class InterestBase(object):
             'info': self.info,
             'status': self.status,
         }
+        for field in self.additional_fields:
+            rv[field] = getattr(self, field)
         if include_roles or include_permissions:
             user_roles = self.get_user_effective_roles(auth_user, session=session)
         if include_roles:
@@ -351,6 +357,8 @@ class InterestBase(object):
                   'must_create': must_create,
                   'can_create': can_create,
                   'session': session}
+        for field in self.additional_fields:
+            kwargs[field] = getattr(self, field)
         if self._model_instance:
             kwargs['id'] = self.id
         self._model_instance = upsert_interest(**kwargs)
