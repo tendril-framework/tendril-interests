@@ -19,6 +19,7 @@ from tendril.authn.users import authn_dependency
 
 from tendril.authn.pydantic import UserReferenceTModel
 from tendril.authz.roles.interests import MembershipInfoTModel
+from tendril.common.interests.states import InterestLifecycleStatus
 from tendril.utils.db import get_session
 
 from .base import ApiRouterGenerator
@@ -58,6 +59,33 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                            include_permissions=include_permissions)
                   for x in self._actual.items(user=user, session=session,
                                               include_inherited=include_inherited,)]
+        return rv
+
+    async def new_items(self, request: Request,
+                        user: AuthUserModel = auth_spec(),
+                        include_roles: bool = False,
+                        include_permissions: bool = False):
+        """
+        Get a list of all new items in this library.
+
+        This endpoint does not enforce interest access control, and
+        returns all available NEW items.
+
+        Additional controls determine what further information is to be
+        included in the response. Note that these additional pieces of
+        information may result in performance penalties, so they should
+        only be requested when needed.
+
+         - **user :** The requesting user.
+         - **include_roles :** Include the user's roles in the response.
+         - **include_permissions :** Include the user's permissions in the response.
+        """
+        with get_session() as session:
+            rv = [x.export(session=session,
+                           include_roles=include_roles,
+                           include_permissions=include_permissions)
+                  for x in self._actual.items(state=InterestLifecycleStatus.NEW,
+                                              session=session)]
         return rv
 
     async def item(self, request: Request, id: int,
@@ -299,6 +327,9 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         router.add_api_route("", self.items, methods=["GET"],
                              response_model=List[self._actual.interest_class.tmodel],
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
+        router.add_api_route("/new", self.new_items, methods=["GET"],
+                             response_model=List[self._actual.interest_class.tmodel],
+                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
         router.add_api_route("/{id}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])

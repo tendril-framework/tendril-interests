@@ -65,9 +65,11 @@ def _type_discriminator(type):
 
 
 @with_db
-def get_interests(type=None, user=None, session=None):
+def get_interests(type=None, state=None, session=None):
     filters = []
     qmodel = _type_discriminator(type)
+    if state:
+        filters.append(qmodel.status == state)
     q = session.query(qmodel).filter(*filters)
     return q.all()
 
