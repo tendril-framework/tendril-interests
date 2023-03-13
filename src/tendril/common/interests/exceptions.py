@@ -1,7 +1,6 @@
 
 
-class HTTPCodedException(Exception):
-    status_code = 500
+from tendril.common.exceptions import HTTPCodedException
 
 
 class InterestException(HTTPCodedException):
