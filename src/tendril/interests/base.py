@@ -123,7 +123,9 @@ class InterestBase(object):
             if not len(users):
                 raise RequiredRoleNotPresent(role, self.id, self.name)
         if self.model.role_spec.activation_requirements['parent_required']:
-            pass
+            if not len(self.parents(limited=False, session=session)):
+                raise RequiredParentNotPresent(self.id, self.name)
+        logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
         self._model_instance.status = InterestLifecycleStatus.ACTIVE
         session.add(self._model_instance)
 

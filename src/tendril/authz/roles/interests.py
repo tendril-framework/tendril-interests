@@ -64,8 +64,7 @@ class InterestRoleSpec(object):
     def activation_requirements(self):
         rv = {'roles_required': [self.apex_role] + self.additional_roles_required,
               'parent_required': self.parent_required,
-              'allowed_states': [InterestLifecycleStatus.NEW,
-                                 InterestLifecycleStatus.ACTIVE]}
+              'allowed_states': [InterestLifecycleStatus.NEW]}
         return rv
 
     @cached_property
