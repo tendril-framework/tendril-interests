@@ -39,6 +39,8 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
 
     type = Column(String(50), nullable=False, default=type_name)
     name = Column(String(255), nullable=False)
+    descriptive_name = Column(String(255), nullable=True)
+
     status = Column(Enum(InterestLifecycleStatus), nullable=False,
                     default=InterestLifecycleStatus.NEW)
     info = Column(mutable_json_type(dbtype=JSONB))

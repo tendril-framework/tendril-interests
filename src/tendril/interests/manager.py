@@ -27,6 +27,7 @@ import importlib
 import networkx
 
 from tendril.utils.db import with_db
+from tendril.utils.db import register_for_create
 from tendril.utils.versions import get_namespace_package_names
 
 from tendril.db.controllers.interests import register_interest_role
@@ -64,10 +65,14 @@ class InterestManager(object):
         self._types[name] = interest
         self._docs.append((name, doc))
 
-    @with_db
-    def register_interest_role(self, name, doc=None, session=None):
+    def register_interest_role(self, name, doc=None):
         logger.info(f"Registering Interest Role '{name}'")
-        self._roles[name] = register_interest_role(name, doc, session=session)
+        self._roles[name] = doc
+
+    @with_db
+    def commit_interest_roles(self, session=None):
+        for name, doc in self._roles.items():
+            register_interest_role(name, doc, session=session)
 
     @property
     def types(self):
@@ -134,6 +139,8 @@ class InterestManager(object):
             {f'{t.model.type_name}:{a}': r
              for a, r in t.model.role_spec.actions.items()})
             for t in self._types.values()]
+
+        register_for_create(self.commit_interest_roles)
 
     def __getattr__(self, item):
         if item == '__file__':

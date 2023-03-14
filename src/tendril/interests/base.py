@@ -4,6 +4,7 @@ from typing import List
 from typing import Optional
 from typing import Literal
 from functools import cached_property
+from pydantic import Field
 
 from tendril.utils.pydantic import TendrilTBaseModel
 
@@ -39,7 +40,8 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestBaseCreateTModel(TendrilTBaseModel):
-    name: str
+    name: str = Field(..., max_length=255)
+    descriptive_name : Optional[str] = Field(..., max_length=255)
     type: Literal['interest']
     info: dict
 
@@ -65,6 +67,7 @@ class InterestBase(object):
     def __init__(self, name, info=None, must_create=False,
                  can_create=True, session=None):
         self._name = None
+        self._descriptive_name = None
         self._info = None
         self._model_instance: InterestModel = None
         self._status: InterestLifecycleStatus = None
@@ -87,6 +90,18 @@ class InterestBase(object):
             return self._name
         else:
             return self._model_instance.name
+
+    @property
+    def descriptive_name(self):
+        if self._descriptive_name:
+            return self._descriptive_name
+        else:
+            return self._model_instance.descriptive_name
+
+    @with_db
+    def set_descriptive_name(self, value, session=None):
+        self._descriptive_name = value
+        self._commit_to_db(session=session)
 
     @property
     def ident(self):
@@ -354,6 +369,7 @@ class InterestBase(object):
     def _commit_to_db(self, must_create=False, can_create=True, session=None):
         kwargs = {'name': self.name,
                   'info': self.info,
+                  'descriptive_name': self.descriptive_name,
                   'status': self._status,
                   'type': self.type_name,
                   'must_create': must_create,

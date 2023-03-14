@@ -93,7 +93,8 @@ def get_interest(id=None, name=None, type=None, raise_if_none=True, session=None
 
 @with_db
 def upsert_interest(id=None, name=None, status=None, info=None, type=None,
-                    must_create=False, can_create=True, session=None, **kwargs):
+                    descriptive_name=None, must_create=False, can_create=True, session=None,
+                    **kwargs):
     # kwargs are the additional fields which apply to the individual
     # interest classes. A more robust way to deal with them is needed.
     # Maybe actually use ORM the way it was meant to instead of this
@@ -116,6 +117,8 @@ def upsert_interest(id=None, name=None, status=None, info=None, type=None,
         interest.info = info
     if status:
         interest.status = status.value
+    if descriptive_name:
+        interest.descriptive_name = descriptive_name
     for k, v in kwargs.items():
         if v:
             setattr(interest, k, v)
