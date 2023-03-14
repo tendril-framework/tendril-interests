@@ -154,8 +154,8 @@ class InterestBase(object):
 
     @with_db
     @require_state(InterestLifecycleStatus.ACTIVE,
-                   exceptions=[(('status', 'NEW'), ('role', 'self.model.role_spec.apex_role'))])
-    @require_permission('add_member', specifier='role',
+                   exceptions=[(('status', 'NEW'),)])
+    @require_permission('add_member', specifier='role', required=False,
                         preprocessor=normalize_role_name, strip_auth=False,
                         exceptions=[(('status', 'NEW'), ('role', 'self.model.role_spec.apex_role'))])
     def assign_role(self, role=None, user=None, reference=None, auth_user=None, session=None):
