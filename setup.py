@@ -29,7 +29,7 @@ def read(fname):
 
 
 core_dependencies = [
-    'tendril-utils-db>=0.4.2',
+    'tendril-utils-db>=0.4.3',
     'tendril-auth',
     'networkx',
     'polars',

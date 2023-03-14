@@ -70,7 +70,8 @@ class GenericInterestLibrary(object):
             raise TypeMismatchError(item.type, self.interest_class.model.type_name)
         created = self.interest_class(item.name, must_create=True, session=session)
         if item.descriptive_name:
-            created.set_descriptive_name(item.hname)
+            created.set_descriptive_name(item.descriptive_name, session=session)
+        session.flush()
         return created
 
     @with_db

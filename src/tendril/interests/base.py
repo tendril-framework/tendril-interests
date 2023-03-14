@@ -72,6 +72,8 @@ class InterestBase(object):
         self._model_instance: InterestModel = None
         self._status: InterestLifecycleStatus = None
         if isinstance(name, InterestModel):
+            if must_create:
+                raise AttributeError("Expected a name, not an object")
             self._model_instance = name
         else:
             self._name = name
@@ -350,6 +352,7 @@ class InterestBase(object):
             'id': self.id,
             'info': self.info,
             'status': self.status,
+            'descriptive_name': self.descriptive_name,
         }
         for field in self.additional_fields:
             rv[field] = getattr(self, field)
