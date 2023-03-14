@@ -369,12 +369,13 @@ class InterestBase(object):
     def _commit_to_db(self, must_create=False, can_create=True, session=None):
         kwargs = {'name': self.name,
                   'info': self.info,
-                  'descriptive_name': self.descriptive_name,
                   'status': self._status,
                   'type': self.type_name,
                   'must_create': must_create,
                   'can_create': can_create,
                   'session': session}
+        if self._descriptive_name:
+            kwargs['descriptive_name'] = self._descriptive_name
         for field in self.additional_fields:
             kwargs[field] = getattr(self, field)
         if self._model_instance:
