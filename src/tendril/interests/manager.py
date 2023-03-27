@@ -143,12 +143,15 @@ class InterestManager(object):
         register_for_create(self.commit_interest_roles)
 
     def __getattr__(self, item):
+        print(item)
         if item == '__file__':
             return None
         if item == '__path__':
             return None
         if item == '__len__':
             return len(self._types.keys())
+        if item == '__spec__':
+            return None
         if item == '__all__':
             return list(self._types.keys()) + \
                    ['doc_render']
