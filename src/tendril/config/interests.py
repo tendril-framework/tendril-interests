@@ -35,7 +35,8 @@ config_elements_interests = [
         "a single component, and other components manipulate Interests using that component's "
         "interests API or directly manipulate the interests using the in-code interfaces."
         "For such deployments, this parameter is generally best set through environment "
-        "variables."
+        "variables.",
+        parser=bool
     ),
 ]
 

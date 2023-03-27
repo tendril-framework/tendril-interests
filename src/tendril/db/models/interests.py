@@ -60,9 +60,9 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
                             secondaryjoin="InterestModel.id == InterestAssociationModel.child_id",
                             backref="parents")
 
-    @declared_attr
-    def artefacts(cls):
-        return relationship('ArtefactModel', back_populates="interest")
+    # @declared_attr
+    # def artefacts(cls):
+    #     return relationship('ArtefactModel', back_populates="interest")
 
     @declared_attr
     def logs(cls):
