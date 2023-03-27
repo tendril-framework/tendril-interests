@@ -143,7 +143,6 @@ class InterestManager(object):
         register_for_create(self.commit_interest_roles)
 
     def __getattr__(self, item):
-        print(item)
         if item == '__file__':
             return None
         if item == '__path__':
