@@ -17,6 +17,8 @@ from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
 from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.exceptions import TypeMismatchError
+from tendril.common.interests.exceptions import InterestNotFound
+from sqlalchemy.exc import NoResultFound
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
@@ -61,8 +63,15 @@ class GenericInterestLibrary(object):
 
     @with_db
     def item(self, id=None, name=None, session=None):
-        return self.interest_class(
-            get_interest(id=id, name=name, type=self.interest_class, session=session))
+        try:
+            return self.interest_class(
+                get_interest(id=id, name=name, type=self.interest_class, session=session))
+        except NoResultFound:
+            if not name:
+                name = '<unspecified>'
+            if not id:
+                id = '<unspecified>'
+            raise InterestNotFound(type_name=self.type_name, name=name, id=id)
 
     @with_db
     def add_item(self, item, session=None):

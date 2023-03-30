@@ -73,6 +73,8 @@ class UserMembershipCollector(object):
         return rv
 
     def interest_ids(self):
+        if not self.df.select(polars.count()).item():
+            return []
         return self.df.select(polars.col('interest.id').unique()).rows()[0]
 
 
