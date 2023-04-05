@@ -118,3 +118,15 @@ class InterestNotFound(HTTPCodedException):
         return f"Interest of type '{self.type_name}' with name '{self.name}' (id={self.i_id}) could not " \
                f"be found."
 
+
+class InterestTypeUnsupported(HTTPCodedException):
+    status_code = 406
+
+    def __init__(self, required=None, id='<unspecified>', name='<unspecified>'):
+        self.required = required
+        self.i_id = id
+        self.name = name
+
+    def __str__(self):
+        return f"Interest with name '{self.name}' (id={self.i_id} does not seem to be " \
+               f"of a supported type for this operation. Required : {self.expected}."

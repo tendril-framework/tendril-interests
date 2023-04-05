@@ -1,7 +1,11 @@
 
 
 import importlib
+from functools import cached_property
+from sqlalchemy.exc import NoResultFound
 
+from tendril.db.controllers.interests import get_interest
+from tendril.common.interests.exceptions import InterestNotFound
 from tendril.utils.versions import get_namespace_package_names
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEBUG)
@@ -29,11 +33,21 @@ class InterestLibraryManager(object):
         self._libraries[name] = library
         
     @property
-    def defined_types(self):
+    def libraries(self):
         return list(self._libraries.keys())
+
+    @cached_property
+    def libraries_by_typename(self):
+        return {x.type_name: x for x in self._libraries.values()}
 
     def install_exc_class(self, name, exc_class):
         self._exc_classes[name] = exc_class
+
+    def find_library(self, id):
+        try:
+            return self.libraries_by_typename[get_interest(id=id).type]
+        except NoResultFound:
+            raise InterestNotFound('<unspecified>', '<unspecified>', id=id)
 
     def __getattr__(self, item):
         if item in self._libraries.keys():
