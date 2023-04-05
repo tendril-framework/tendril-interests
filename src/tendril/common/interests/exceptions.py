@@ -115,8 +115,8 @@ class InterestNotFound(HTTPCodedException):
         self.i_id = id
 
     def __str__(self):
-        return f"Interest of type '{self.type_name}' with name '{self.name}' (id={self.i_id}) could not " \
-               f"be found."
+        return f"Interest of type '{self.type_name}' with " \
+               f"name '{self.name}' (id={self.i_id}) could not be found."
 
 
 class InterestTypeUnsupported(HTTPCodedException):
