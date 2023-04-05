@@ -53,9 +53,9 @@ async def get_user_memberships(user: AuthUserModel = auth_spec(),
 
 def _generate_routers():
     interest_routers = []
-    for itype in interests.defined_types:
-        ilib = getattr(interests, itype)
-        generated_routers = ilib.api_generator().generate(f'{itype}')
+    for libname in interests.libraries:
+        ilib = getattr(interests, libname)
+        generated_routers = ilib.api_generator().generate(f'{libname}')
         interest_routers.extend(generated_routers)
     return interest_routers
 
