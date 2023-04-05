@@ -129,4 +129,4 @@ class InterestTypeUnsupported(HTTPCodedException):
 
     def __str__(self):
         return f"Interest with name '{self.name}' (id={self.i_id} does not seem to be " \
-               f"of a supported type for this operation. Required : {self.expected}."
+               f"of a supported type for this operation. Required : {self.required}."
