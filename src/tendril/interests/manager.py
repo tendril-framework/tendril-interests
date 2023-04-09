@@ -23,6 +23,7 @@ Tendril Interest Manager (:mod:`tendril.interest.manager`)
 """
 
 
+import copy
 import importlib
 import networkx
 
@@ -83,7 +84,7 @@ class InterestManager(object):
         """
         list_of_edges = []
         for item in self._type_spec.keys():
-            allowed_children = self._type_spec[item]['allowed_children']
+            allowed_children = copy.copy(self._type_spec[item]['allowed_children'])
             if allowed_children == ["*"]:
                 allowed_children = [itemtype for itemtype in self._type_spec.keys()]
             while item in allowed_children:
@@ -103,8 +104,10 @@ class InterestManager(object):
         paths = networkx.all_simple_paths(self.type_tree, self._tree_root(), type_name)
         parents = []
         [parents.append(x[-2])
-         for x in sorted(paths, key=lambda x: len(x))
+         for x in sorted(paths, key=lambda x: len(x), reverse=True)
          if x[-2] not in parents]
+        if type_name in self._type_spec[type_name]['allowed_children']:
+            parents.append(type_name)
         return parents
 
     def _possible_type_paths(self, type_name):

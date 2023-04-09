@@ -116,6 +116,22 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                        include_permissions=include_permissions)
         return rv
 
+    async def find_possible_parents(self, request: Request,
+                                    user: AuthUserModel = auth_spec()):
+        """
+        Get possible parents for new items in this library.
+
+        All user memberships in possible parents for this library's interest
+        type which allow creation of a child of this type are returned.
+
+        - **user :* The requesting user, identified by the access token.
+        """
+        with get_session() as session:
+            result = self._actual.possible_parents(user=user, session=session)
+            return [x.export(auth_user=user, session=session,
+                             include_roles=False,
+                             include_permissions=False) for x in result]
+
     def _inject_create_model(self, ep, param='item'):
         orig_sig = signature(ep)
         params = list(orig_sig.parameters.values())
@@ -322,38 +338,51 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     def generate(self, name):
         desc = f'{name} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
+        from tendril import interests
+        parent_models = [interests.type_codes[x].tmodel for x in interests.possible_parents[prefix]]
+
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
         router.add_api_route("", self.items, methods=["GET"],
                              response_model=List[self._actual.interest_class.tmodel],
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
         router.add_api_route("/new", self.new_items, methods=["GET"],
                              response_model=List[self._actual.interest_class.tmodel],
+                             response_model_exclude_none=True,
+                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
+        if len(parent_models):
+            router.add_api_route("/possible_parents", self.find_possible_parents, methods=['GET'],
+                                 response_model=List[Union[tuple(parent_models)]],
+                                 response_model_exclude_none=True,
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:create'])])
+        router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
+                             response_model=self._actual.interest_class.tmodel,
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
         router.add_api_route("/{id}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
-        router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
-                             response_model=self._actual.interest_class.tmodel,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
         router.add_api_route("/{id}/activate", self.activate_item, methods=['POST'],
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
         router.add_api_route("/{id}/members", self.item_members, methods=["GET"],
                              response_model=Dict[str, List[MembershipInfoTModel]],
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
         router.add_api_route("/{id}/members/{role}", self.item_role_members, methods=["GET"],
                              response_model=List[MembershipInfoTModel],
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
         router.add_api_route("/{id}/members/{role}/add", self.item_grant_role, methods=["POST"],
                              response_model=self._actual.interest_class.tmodel,
+                             response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
-
-        from tendril import interests
-        parent_models = [interests.type_codes[x].tmodel for x in interests.possible_parents[prefix]]
 
         if len(parent_models):
             router.add_api_route("/{id}/parents", self.item_parents, methods=["GET"],
                                  response_model=List[Union[tuple(parent_models)]],
+                                 response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
 
         ac = self._actual.interest_class.model.role_spec.allowed_children
@@ -363,6 +392,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         if len(child_models):
             router.add_api_route("/{id}/children", self.item_children, methods=["GET"],
                                  response_model=List[Union[tuple(child_models)]],
+                                 response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
             router.add_api_route("/{id}/children/add", self.item_add_child, methods=["POST"],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])])

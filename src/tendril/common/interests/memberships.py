@@ -3,8 +3,11 @@
 import polars
 from typing import Dict
 from typing import List
+from tendril import interests
 from tendril.utils.pydantic import TendrilTBaseModel
-from tendril.utils.db import get_session
+from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.db.controllers.interests import get_interest
+from tendril.utils.db import with_db
 
 
 class UserMembershipTModel(TendrilTBaseModel):
@@ -75,18 +78,40 @@ class UserMembershipCollector(object):
     def interest_ids(self):
         if not self.df.select(polars.count()).item():
             return []
-        return self.df.select(polars.col('interest.id').unique()).rows()[0]
+        return list(self.df.select(polars.col('interest.id').unique()).get_column(name='interest.id'))
+
+    @with_db
+    def _get_interest(self, iid, itype, session=None):
+        interest_type = interests.type_codes[itype]
+        return interest_type(get_interest(id=iid, type=interest_type.model, session=session))
+
+    @with_db
+    def interests(self, filter_criteria=None, sort_heuristics=None, session=None):
+        if not self.df.select(polars.count()).item():
+            return []
+        i_itype = self.df.select(polars.col(['interest.id', 'type'])).unique()
+        cand_interests = [self._get_interest(iid=iid, itype=type_name, session=session)
+                          for iid, type_name in i_itype.rows()]
+        if filter_criteria:
+            cand_interests = [x for x in cand_interests
+                              if all([getattr(x, acc)(**kw) for acc, kw in filter_criteria])]
+        if sort_heuristics:
+            for acc, reflist in sort_heuristics:
+                ranks = dict((value, idx) for idx, value in enumerate(reflist))
+                cand_interests = sorted(cand_interests, key=lambda x: ranks[x.type_name])
+        return cand_interests
 
 
 def _rewrap_interest(model):
-    from tendril.interests import type_codes
     type_name = model.type
-    return type_codes[type_name](model)
+    return interests.type_codes[type_name](model)
 
 
+@with_db
 def _get_interest_user_memberships(collector, interest, user_id,
                                    include_delegated=True,
                                    include_inherited=True,
+                                   include_active_only=False,
                                    is_inherited=False,
                                    inherited_roles=None,
                                    interest_types=None,
@@ -120,18 +145,22 @@ def _get_interest_user_memberships(collector, interest, user_id,
                 continue
             if parent_types and not child.model.type_name in parent_types:
                 continue
+            if include_active_only and not child.status == InterestLifecycleStatus.ACTIVE:
+                continue
             _get_interest_user_memberships(collector, child, user_id,
                                            include_delegated=include_delegated,
                                            include_inherited=include_inherited,
+                                           include_active_only=include_active_only,
                                            is_inherited=True, inherited_roles=to_inherit,
                                            interest_types=interest_types,
                                            parent_types=parent_types,
                                            session=session)
 
 
+@with_db
 def user_memberships(user_id, interest_types=None,
-                     include_delegated=True,
-                     include_inherited=True):
+                     include_delegated=True, include_inherited=True,
+                     include_active_only=False, session=None):
     from tendril.interests import possible_parents
     from tendril.db.controllers import interests
 
@@ -141,18 +170,20 @@ def user_memberships(user_id, interest_types=None,
         for t in interest_types:
             parent_types.update(possible_parents[t])
 
-    with get_session() as session:
-        memberships = interests.get_user_memberships(user=user_id, session=session)
-        rv = UserMembershipCollector()
-        for m in memberships:
-            if parent_types and m.interest.type_name not in parent_types:
-                continue
-            _get_interest_user_memberships(rv, _rewrap_interest(m.interest), user_id,
-                                           include_delegated=include_delegated,
-                                           include_inherited=include_inherited,
-                                           is_inherited=False, inherited_roles=[],
-                                           interest_types=interest_types,
-                                           parent_types=parent_types,
-                                           session=session)
-        rv.process()
+    memberships = interests.get_user_memberships(user=user_id, session=session)
+    rv = UserMembershipCollector()
+    for m in memberships:
+        if parent_types and m.interest.type_name not in parent_types:
+            continue
+        if include_active_only and m.interest.status != InterestLifecycleStatus.ACTIVE:
+            continue
+        _get_interest_user_memberships(rv, _rewrap_interest(m.interest), user_id,
+                                       include_delegated=include_delegated,
+                                       include_inherited=include_inherited,
+                                       include_active_only=include_active_only,
+                                       is_inherited=False, inherited_roles=[],
+                                       interest_types=interest_types,
+                                       parent_types=parent_types,
+                                       session=session)
+    rv.process()
     return rv

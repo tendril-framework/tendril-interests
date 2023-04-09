@@ -3,23 +3,24 @@
 import os
 import csv
 from functools import cached_property
+from sqlalchemy.exc import NoResultFound
 
 from tendril.config import AUDIT_PATH
 from tendril.utils.fsutils import VersionedOutputFile
 
-from tendril.utils.db import with_db
+from tendril import interests
+from tendril.interests import InterestBase
 
 from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests import get_interests
 from tendril.db.controllers.interests import get_user_memberships
-from tendril.interests import InterestBase
 from tendril.apiserver.templates.interests import InterestLibraryRouterGenerator
 
 from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.exceptions import TypeMismatchError
 from tendril.common.interests.exceptions import InterestNotFound
-from sqlalchemy.exc import NoResultFound
 
+from tendril.utils.db import with_db
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
@@ -86,6 +87,19 @@ class GenericInterestLibrary(object):
     @with_db
     def delete_item(self, id=None, name=None, session=None):
         raise NotImplementedError
+
+    @with_db
+    def possible_parents(self, user=None, session=None):
+        parent_types = interests.possible_parents[self.type_name]
+        if self.type_name in self.interest_class.model.role_spec.allowed_children:
+            parent_types.append(self.type_name)
+        candidate_memberships = user_memberships(user_id=user, interest_types=parent_types,
+                                                 session=session)
+        candidate_interests = candidate_memberships.interests(
+            filter_criteria=[('check_user_access', {'user': user, 'session': session,
+                                                    'action': f'add_child:{self.type_name}'})],
+            sort_heuristics=[('type_name', parent_types)])
+        return candidate_interests
 
     def api_generator(self):
         return InterestLibraryRouterGenerator(self)
