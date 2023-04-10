@@ -18,6 +18,25 @@ class InterestLibraryManager(object):
         self._exc_classes = {}
         self._load_libraries()
 
+    def recognized_idents(self):
+        rv = []
+        for lib in self._libraries.values():
+            rv.extend(lib.idents())
+        return rv
+
+    def recognized_names(self):
+        rv = {}
+        for lname, lib in self._libraries.items():
+            rv.update({x: lname for x in lib.names()})
+        return rv
+
+    def name_available(self, name):
+        i = get_interest(name=name, raise_if_none=False)
+        if i is None:
+            return True
+        else:
+            return False
+
     def _load_libraries(self):
         logger.info("Installing interest libraries from {0}".format(self._prefix))
         modules = list(get_namespace_package_names(self._prefix))

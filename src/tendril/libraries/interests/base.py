@@ -35,6 +35,9 @@ class GenericInterestLibrary(object):
     def idents(self):
         return [x.ident for x in self.items()]
 
+    def names(self):
+        return [x.name for x in self.items()]
+
     @with_db
     def items(self, user=None, state=None, include_inherited=False, session=None):
         if not user:

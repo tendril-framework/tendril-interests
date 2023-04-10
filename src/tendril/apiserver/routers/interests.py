@@ -51,6 +51,11 @@ async def get_user_memberships(user: AuthUserModel = auth_spec(),
                             include_inherited=include_inherited).render()
 
 
+@interests_router.get("/name_available", response_model=bool)
+async def check_name_available(name: str):
+    return interests.name_available(name)
+
+
 def _generate_routers():
     interest_routers = []
     for libname in interests.libraries:
