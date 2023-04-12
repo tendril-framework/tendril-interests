@@ -15,7 +15,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 
 from tendril.authz.roles.interests import InterestRoleSpec
 
-from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.states import LifecycleStatus
 
 from tendril.utils.db import DeclBase
 from tendril.utils.db import BaseMixin
@@ -41,8 +41,8 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
     name = Column(String(255), nullable=False)
     descriptive_name = Column(String(255), nullable=True)
 
-    status = Column(Enum(InterestLifecycleStatus), nullable=False,
-                    default=InterestLifecycleStatus.NEW)
+    status = Column(Enum(LifecycleStatus), nullable=False,
+                    default=LifecycleStatus.NEW)
     info = Column(mutable_json_type(dbtype=JSONB))
 
     # @declared_attr

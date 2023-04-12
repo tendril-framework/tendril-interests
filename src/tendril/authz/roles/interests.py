@@ -6,7 +6,7 @@ from functools import cached_property
 from functools import wraps
 from tendril.authn.pydantic import UserStubTModel
 from tendril.utils.pydantic import TendrilTBaseModel
-from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.states import LifecycleStatus
 from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import AuthorizationRequiredError
 from tendril.utils import log
@@ -64,7 +64,13 @@ class InterestRoleSpec(object):
     def activation_requirements(self):
         rv = {'roles_required': [self.apex_role] + self.additional_roles_required,
               'parent_required': self.parent_required,
-              'allowed_states': [InterestLifecycleStatus.NEW]}
+              'allowed_states': [LifecycleStatus.NEW]}
+        return rv
+
+    @cached_property
+    def approval_requirements(self):
+        rv = {'allowed_states': [LifecycleStatus.APPROVAL],
+              'approvals_needed': []}
         return rv
 
     @cached_property

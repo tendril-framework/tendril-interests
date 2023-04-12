@@ -10,8 +10,8 @@ from tendril.utils.pydantic import TendrilTBaseModel
 
 from tendril.authn.db.controller import get_user_by_id
 from tendril.db.models.interests import InterestModel
-from tendril.db.models.interests import InterestLifecycleStatus
 
+from tendril.common.states import LifecycleStatus
 from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import RequiredRoleNotPresent
 from tendril.common.interests.exceptions import RequiredParentNotPresent
@@ -50,7 +50,7 @@ class InterestBaseReadTMixin(TendrilTBaseModel):
     id: int
     roles: Optional[List[str]]
     permissions: Optional[List[str]]
-    status: InterestLifecycleStatus
+    status: LifecycleStatus
 
 
 class InterestBaseTModel(InterestBaseCreateTModel,
@@ -70,7 +70,7 @@ class InterestBase(object):
         self._descriptive_name = None
         self._info = None
         self._model_instance: InterestModel = None
-        self._status: InterestLifecycleStatus = None
+        self._status: LifecycleStatus = None
         if isinstance(name, InterestModel):
             if must_create:
                 raise AttributeError("Expected a name, not an object")
@@ -131,8 +131,7 @@ class InterestBase(object):
         self._commit_to_db()
 
     @with_db
-    @require_permission('edit')
-    def activate(self, session=None):
+    def _check_activation_requirements(self, session=None):
         if self.status not in self.model.role_spec.activation_requirements['allowed_states']:
             raise ActivationNotAllowedFromState(self.status, self.id, self.name)
         for role in self.model.role_spec.activation_requirements['roles_required']:
@@ -142,9 +141,67 @@ class InterestBase(object):
         if self.model.role_spec.activation_requirements['parent_required']:
             if not len(self.parents(limited=False, session=session)):
                 raise RequiredParentNotPresent(self.id, self.name)
-        logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
-        self._model_instance.status = InterestLifecycleStatus.ACTIVE
+
+    @with_db
+    def _needed_approvals(self, session=None):
+        common_approvals = self.model.role_spec.approval_requirements['approvals_needed']
+        additional_approvals = []
+        return common_approvals + additional_approvals
+
+    @with_db
+    def _check_needs_approval(self, session=None):
+        if len(self._needed_approvals(session=session)):
+            return True
+        else:
+            return False
+
+    @with_db
+    def _check_approval(self, needed_approval, session=None):
+        return True
+
+    @with_db
+    def _pending_approvals(self, session=None):
+        rv = []
+        for needed_approval in self._needed_approvals(session=session):
+            if not self._check_approval(needed_approval, session=session):
+                rv.append(needed_approval)
+        return rv
+
+    @with_db
+    @require_permission('edit', strip_auth=False)
+    @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
+    def activate(self, auth_user=None, session=None):
+        if self.model_instance.status == LifecycleStatus.ACTIVE:
+            logger.info(f"{self.model.type_name} Interest {self.id} {self.name} "
+                        f"is already active")
+            return
+
+        self._check_activation_requirements(session=session)
+
+        if self._check_needs_approval(session=session):
+            pending_approvals = self._pending_approvals(session=session)
+            if len(pending_approvals):
+                # TODO Signal for approvals?
+                if self._model_instance.status != LifecycleStatus.APPROVAL:
+                    logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name} "
+                                f"pending Required Approvals")
+                    self._model_instance.status = LifecycleStatus.APPROVAL
+                else:
+                    logger.debug(f"{self.model.type_name} Interest {self.id} {self.name} "
+                                 f"is still pending approval")
+            else:
+                logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
+                self._model_instance.status = LifecycleStatus.ACTIVE
+        else:
+            logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
+            self._model_instance.status = LifecycleStatus.ACTIVE
         session.add(self._model_instance)
+
+    @with_db
+    @require_permission('edit', strip_auth=False)
+    @require_state([LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
+    def approve(self, approval_type, auth_user=None, session=None):
+        pass
 
     @property
     def roles(self):
@@ -155,7 +212,7 @@ class InterestBase(object):
         return self._model_instance.role_spec.allowed_children
 
     @with_db
-    @require_state(InterestLifecycleStatus.ACTIVE,
+    @require_state(LifecycleStatus.ACTIVE,
                    exceptions=[(('status', 'NEW'),)])
     @require_permission('add_member', specifier='role', required=False,
                         preprocessor=normalize_role_name, strip_auth=False,
@@ -311,7 +368,7 @@ class InterestBase(object):
         return child.type_name
 
     @with_db
-    @require_state(InterestLifecycleStatus.ACTIVE)
+    @require_state(LifecycleStatus.ACTIVE)
     @require_permission('add_child', specifier=_get_child_type, preprocessor=normalize_type_name)
     def add_child(self, child, limited=False, session=None):
         return add_child(child, self.id, self.type_name,
