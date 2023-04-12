@@ -19,7 +19,7 @@ from tendril.authn.users import authn_dependency
 
 from tendril.authn.pydantic import UserReferenceTModel
 from tendril.authz.roles.interests import MembershipInfoTModel
-from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.states import LifecycleStatus
 from tendril.utils.db import get_session
 
 from .base import ApiRouterGenerator
@@ -84,7 +84,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
             rv = [x.export(session=session,
                            include_roles=include_roles,
                            include_permissions=include_permissions)
-                  for x in self._actual.items(state=InterestLifecycleStatus.NEW,
+                  for x in self._actual.items(state=LifecycleStatus.NEW,
                                               session=session)]
         return rv
 

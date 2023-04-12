@@ -5,7 +5,7 @@ from typing import Dict
 from typing import List
 from tendril import interests
 from tendril.utils.pydantic import TendrilTBaseModel
-from tendril.common.interests.states import InterestLifecycleStatus
+from tendril.common.states import LifecycleStatus
 from tendril.db.controllers.interests import get_interest
 from tendril.utils.db import with_db
 
@@ -145,7 +145,7 @@ def _get_interest_user_memberships(collector, interest, user_id,
                 continue
             if parent_types and not child.model.type_name in parent_types:
                 continue
-            if include_active_only and not child.status == InterestLifecycleStatus.ACTIVE:
+            if include_active_only and not child.status == LifecycleStatus.ACTIVE:
                 continue
             _get_interest_user_memberships(collector, child, user_id,
                                            include_delegated=include_delegated,
@@ -175,7 +175,7 @@ def user_memberships(user_id, interest_types=None,
     for m in memberships:
         if parent_types and m.interest.type_name not in parent_types:
             continue
-        if include_active_only and m.interest.status != InterestLifecycleStatus.ACTIVE:
+        if include_active_only and m.interest.status != LifecycleStatus.ACTIVE:
             continue
         _get_interest_user_memberships(rv, _rewrap_interest(m.interest), user_id,
                                        include_delegated=include_delegated,
