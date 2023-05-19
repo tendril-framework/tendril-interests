@@ -27,6 +27,7 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 class GenericInterestLibrary(object):
     interest_class = InterestBase
+    additional_api_generators = []
 
     @property
     def type_name(self):
@@ -104,8 +105,11 @@ class GenericInterestLibrary(object):
             sort_heuristics=[('type_name', parent_types)])
         return candidate_interests
 
-    def api_generator(self):
-        return InterestLibraryRouterGenerator(self)
+    def api_generators(self):
+        rv = [InterestLibraryRouterGenerator(self)]
+        for generator in self.additional_api_generators:
+            rv.append(generator(self))
+        return rv
 
     # def export_audit(self, name):
     #     auditfname = os.path.join(

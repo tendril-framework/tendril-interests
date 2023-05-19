@@ -284,7 +284,6 @@ def require_permission(action,
             for exception in exceptions:
                 for predicate in exception:
                     if not _check_predicate(predicate, self, kwargs):
-                        print(predicate)
                         break
                 else:
                     in_exception = True

@@ -4,7 +4,6 @@ from typing import List
 from typing import Dict
 from typing import Union
 
-from pydantic import Field
 from inspect import signature
 from makefun import create_function
 

@@ -60,8 +60,10 @@ def _generate_routers():
     interest_routers = []
     for libname in interests.libraries:
         ilib = getattr(interests, libname)
-        generated_routers = ilib.api_generator().generate(f'{libname}')
-        interest_routers.extend(generated_routers)
+        api_generators = ilib.api_generators()
+        for generator in api_generators:
+            generated_routers = generator.generate(f'{libname}')
+            interest_routers.extend(generated_routers)
     return interest_routers
 
 
