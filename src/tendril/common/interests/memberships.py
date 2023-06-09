@@ -161,14 +161,14 @@ def _get_interest_user_memberships(collector, interest, user_id,
 def user_memberships(user_id, interest_types=None,
                      include_delegated=True, include_inherited=True,
                      include_active_only=False, session=None):
-    from tendril.interests import possible_parents
+    from tendril.interests import possible_ancestors
     from tendril.db.controllers import interests
 
     parent_types = None
     if interest_types:
         parent_types = set(interest_types)
         for t in interest_types:
-            parent_types.update(possible_parents[t])
+            parent_types.update(possible_ancestors[t])
 
     memberships = interests.get_user_memberships(user=user_id, session=session)
     rv = UserMembershipCollector()

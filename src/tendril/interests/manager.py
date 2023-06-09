@@ -46,6 +46,7 @@ class InterestManager(object):
         self.type_tree = None
         self.possible_parents = {}
         self.possible_paths = {}
+        self.possible_ancestors = {}
         self.all_actions = {}
         self._roles = {}
         self._docs = []
@@ -113,6 +114,9 @@ class InterestManager(object):
     def _possible_type_paths(self, type_name):
         return list(networkx.all_simple_paths(self.type_tree, self._tree_root(), type_name))
 
+    def _possible_type_ancestors(self, type_name):
+        return networkx.ancestors(self.type_tree, type_name)
+
     def _tree_root(self):
         return list(networkx.topological_sort(self.type_tree))[0]
 
@@ -137,6 +141,9 @@ class InterestManager(object):
 
             self.possible_paths = {x: self._possible_type_paths(x)
                                    for x in self._type_codes}
+
+            self.possible_ancestors = {x: self._possible_type_ancestors(x)
+                                       for x in self._type_codes}
 
         [self.all_actions.update(
             {f'{t.model.type_name}:{a}': r
