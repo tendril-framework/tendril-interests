@@ -56,7 +56,9 @@ class InterestManager(object):
         logger.info("Loading interest types from {0}".format(self._prefix))
         modules = list(get_namespace_package_names(self._prefix))
         for m_name in modules:
-            if m_name in [__name__, f"{self._prefix}.db", f"{self._prefix}.template"]:
+            if m_name in [__name__, f"{self._prefix}.db",
+                          f"{self._prefix}.template",
+                          f'{self._prefix}.mixins']:
                 continue
             m = importlib.import_module(m_name)
             m.load(self)

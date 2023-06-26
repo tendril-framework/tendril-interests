@@ -359,27 +359,27 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              response_model=self._actual.interest_class.tmodel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
-        router.add_api_route("/{id}", self.item, methods=["GET"],
+        router.add_api_route("/{id:int}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
-        router.add_api_route("/{id}/activate", self.activate_item, methods=['POST'],
+        router.add_api_route("/{id:int}/activate", self.activate_item, methods=['POST'],
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
-        router.add_api_route("/{id}/members", self.item_members, methods=["GET"],
+        router.add_api_route("/{id:int}/members", self.item_members, methods=["GET"],
                              response_model=Dict[str, List[MembershipInfoTModel]],
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-        router.add_api_route("/{id}/members/{role}", self.item_role_members, methods=["GET"],
+        router.add_api_route("/{id:int}/members/{role}", self.item_role_members, methods=["GET"],
                              response_model=List[MembershipInfoTModel],
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-        router.add_api_route("/{id}/members/{role}/add", self.item_grant_role, methods=["POST"],
+        router.add_api_route("/{id:int}/members/{role}/add", self.item_grant_role, methods=["POST"],
                              response_model=self._actual.interest_class.tmodel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
 
         if len(parent_models):
-            router.add_api_route("/{id}/parents", self.item_parents, methods=["GET"],
+            router.add_api_route("/{id:int}/parents", self.item_parents, methods=["GET"],
                                  response_model=List[Union[tuple(parent_models)]],
                                  response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
@@ -389,10 +389,10 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
             ac = interests.type_codes.keys()
         child_models = [interests.type_codes[x].tmodel for x in ac]
         if len(child_models):
-            router.add_api_route("/{id}/children", self.item_children, methods=["GET"],
+            router.add_api_route("/{id:int}/children", self.item_children, methods=["GET"],
                                  response_model=List[Union[tuple(child_models)]],
                                  response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
-            router.add_api_route("/{id}/children/add", self.item_add_child, methods=["POST"],
+            router.add_api_route("/{id:int}/children/add", self.item_add_child, methods=["POST"],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
         return [router]
