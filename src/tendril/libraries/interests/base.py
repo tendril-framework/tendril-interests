@@ -82,7 +82,8 @@ class GenericInterestLibrary(object):
     def add_item(self, item, session=None):
         if item.type != self.interest_class.model.type_name:
             raise TypeMismatchError(item.type, self.interest_class.model.type_name)
-        created = self.interest_class(item.name, must_create=True, session=session)
+        kwargs = {x: getattr(item, x) for x in self.interest_class.additional_creation_fields}
+        created = self.interest_class(item.name, **kwargs, must_create=True, session=session)
         if item.descriptive_name:
             created.set_descriptive_name(item.descriptive_name, session=session)
         session.flush()

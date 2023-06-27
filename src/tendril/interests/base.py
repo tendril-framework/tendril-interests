@@ -63,6 +63,8 @@ class InterestBase(object):
     tmodel_create = InterestBaseCreateTModel
     tmodel = InterestBaseTModel
     additional_fields = []
+    additional_creation_fields = []
+    additional_export_fields = []
 
     def __init__(self, name, info=None, must_create=False,
                  can_create=True, session=None):
@@ -413,6 +415,8 @@ class InterestBase(object):
             'descriptive_name': self.descriptive_name,
         }
         for field in self.additional_fields:
+            rv[field] = getattr(self, field)
+        for field in self.additional_export_fields:
             rv[field] = getattr(self, field)
         if include_roles or include_permissions:
             user_roles = self.get_user_effective_roles(auth_user, session=session)

@@ -58,7 +58,7 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
         return relationship("InterestModel", secondary="InterestAssociation",
                             primaryjoin="InterestModel.id == InterestAssociationModel.parent_id",
                             secondaryjoin="InterestModel.id == InterestAssociationModel.child_id",
-                            backref="parents")
+                            backref="parents", lazy='dynamic')
 
     # @declared_attr
     # def artefacts(cls):

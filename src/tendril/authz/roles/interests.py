@@ -50,6 +50,10 @@ class InterestRoleSpec(object):
     child_add_role = None
     child_delete_role = None
 
+    artefact_read_role = None
+    artefact_add_role = None
+    artefact_delete_role = None
+
     child_read_roles = {}
     child_add_roles = {}
     child_delete_roles = {}
@@ -167,9 +171,9 @@ class InterestRoleSpec(object):
 
     def _artefact_actions(self):
         return {
-            'read_artefacts': ('Member', f'{self.prefix}:read'),
-            'add_artefact': ('Owner', f'{self.prefix}:write'),
-            'delete_artefact': ('Owner', f'{self.prefix}:delete'),
+            'read_artefacts': (self.artefact_read_role or self.base_role, f'{self.prefix}:read'),
+            'add_artefact': (self.artefact_add_role or self.apex_role, f'{self.prefix}:write'),
+            'delete_artefact': (self.artefact_delete_role or self.apex_role, f'{self.prefix}:delete'),
         }
 
     def _custom_actions(self):
@@ -274,7 +278,7 @@ def require_permission(action,
                        exceptions=[]):
     def decorator(func):
         @wraps(func)
-        def permission_check(self, *args, **kwargs):
+        def permission_check(self, *args, probe_only=False, **kwargs):
             if strip_auth:
                 auth_user = kwargs.pop('auth_user', None)
             else:
@@ -293,6 +297,8 @@ def require_permission(action,
                 raise AttributeError("auth_user is required to execute "
                                      "this interest instance method")
             if not auth_user:
+                if probe_only:
+                    return True
                 return func(self, *args, **kwargs)
             session = kwargs.get('session', None)
             if specifier:
@@ -307,6 +313,8 @@ def require_permission(action,
                 laction = action
             # logger.debug(f"Checking permissions of {auth_user} for '{laction}' on {self}")
             if in_exception or self.check_user_access(user=auth_user, action=laction, session=session):
+                if probe_only:
+                    return True
                 return func(self, *args, **kwargs)
             else:
                 raise AuthorizationRequiredError(auth_user, laction, self.id, self.name)
