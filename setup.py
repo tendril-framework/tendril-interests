@@ -34,6 +34,7 @@ core_dependencies = [
     'networkx',
     'polars',
     'makefun',
+    'asgiref',
 ]
 
 install_requires = core_dependencies + ['wheel']
