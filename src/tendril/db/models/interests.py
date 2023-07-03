@@ -45,6 +45,13 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
                     default=LifecycleStatus.NEW)
     info = Column(mutable_json_type(dbtype=JSONB))
 
+    @property
+    def actual(self):
+        if not hasattr(self, '_actual'):
+            from tendril.interests import type_codes
+            self._actual = type_codes[self.type_name](self)
+        return self._actual
+
     # @declared_attr
     # def parent(cls):
     #     return relationship("InterestModel", remote_side=[cls.id])
