@@ -346,37 +346,48 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              response_model=List[self._actual.interest_class.tmodel],
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
-        router.add_api_route("/new", self.new_items, methods=["GET"],
-                             response_model=List[self._actual.interest_class.tmodel],
-                             response_model_exclude_none=True,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
-        if len(parent_models):
-            router.add_api_route("/possible_parents", self.find_possible_parents, methods=['GET'],
-                                 response_model=List[Union[tuple(parent_models)]],
+
+        if self._actual.enable_creation_api:
+            router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
+                                 response_model=self._actual.interest_class.tmodel,
                                  response_model_exclude_none=True,
-                                 dependencies=[auth_spec(scopes=[f'{prefix}:create'])])
-        router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
-                             response_model=self._actual.interest_class.tmodel,
-                             response_model_exclude_none=True,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
+
+        if self._actual.enable_activation_api:
+            router.add_api_route("/new", self.new_items, methods=["GET"],
+                                 response_model=List[self._actual.interest_class.tmodel],
+                                 response_model_exclude_none=True,
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
+
+            if len(parent_models):
+                router.add_api_route("/possible_parents", self.find_possible_parents, methods=['GET'],
+                                     response_model=List[Union[tuple(parent_models)]],
+                                     response_model_exclude_none=True,
+                                     dependencies=[auth_spec(scopes=[f'{prefix}:create'])])
+
+            router.add_api_route("/{id:int}/activate", self.activate_item, methods=['POST'],
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
+
         router.add_api_route("/{id:int}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
-        router.add_api_route("/{id:int}/activate", self.activate_item, methods=['POST'],
-                             dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
-        router.add_api_route("/{id:int}/members", self.item_members, methods=["GET"],
-                             response_model=Dict[str, List[MembershipInfoTModel]],
-                             response_model_exclude_none=True,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-        router.add_api_route("/{id:int}/members/{role}", self.item_role_members, methods=["GET"],
-                             response_model=List[MembershipInfoTModel],
-                             response_model_exclude_none=True,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
-        router.add_api_route("/{id:int}/members/{role}/add", self.item_grant_role, methods=["POST"],
-                             response_model=self._actual.interest_class.tmodel,
-                             response_model_exclude_none=True,
-                             dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
+
+        if self._actual.enable_membership_api:
+            router.add_api_route("/{id:int}/members", self.item_members, methods=["GET"],
+                                 response_model=Dict[str, List[MembershipInfoTModel]],
+                                 response_model_exclude_none=True,
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
+            router.add_api_route("/{id:int}/members/{role}", self.item_role_members, methods=["GET"],
+                                 response_model=List[MembershipInfoTModel],
+                                 response_model_exclude_none=True,
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:read'])], )
+
+        if self._actual.enable_membership_edit_api:
+            router.add_api_route("/{id:int}/members/{role}/add", self.item_grant_role, methods=["POST"],
+                                 response_model=self._actual.interest_class.tmodel,
+                                 response_model_exclude_none=True,
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
 
         if len(parent_models):
             router.add_api_route("/{id:int}/parents", self.item_parents, methods=["GET"],
