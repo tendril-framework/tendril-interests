@@ -12,7 +12,6 @@ from tendril.authn.db.controller import get_user_by_id
 from tendril.db.models.interests import InterestModel
 
 from tendril.common.states import LifecycleStatus
-from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import RequiredRoleNotPresent
 from tendril.common.interests.exceptions import RequiredParentNotPresent
 from tendril.common.interests.exceptions import ActivationNotAllowedFromState
