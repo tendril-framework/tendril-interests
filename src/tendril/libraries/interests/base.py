@@ -27,6 +27,11 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 class GenericInterestLibrary(object):
     interest_class = InterestBase
+    enable_creation_api = True
+    enable_activation_api = True
+    enable_membership_api = True
+    enable_membership_edit_api = True
+
     additional_api_generators = []
 
     @property
