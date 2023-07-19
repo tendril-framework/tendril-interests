@@ -40,7 +40,7 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 class InterestBaseCreateTModel(TendrilTBaseModel):
     name: str = Field(..., max_length=255)
-    descriptive_name : Optional[str] = Field(..., max_length=255)
+    descriptive_name: Optional[str] = Field(..., max_length=255)
     type: Literal['interest']
     info: dict
 
@@ -144,31 +144,6 @@ class InterestBase(object):
                 raise RequiredParentNotPresent(self.id, self.name)
 
     @with_db
-    def _needed_approvals(self, session=None):
-        common_approvals = self.model.role_spec.approval_requirements['approvals_needed']
-        additional_approvals = []
-        return common_approvals + additional_approvals
-
-    @with_db
-    def _check_needs_approval(self, session=None):
-        if len(self._needed_approvals(session=session)):
-            return True
-        else:
-            return False
-
-    @with_db
-    def _check_approval(self, needed_approval, session=None):
-        return True
-
-    @with_db
-    def _pending_approvals(self, session=None):
-        rv = []
-        for needed_approval in self._needed_approvals(session=session):
-            if not self._check_approval(needed_approval, session=session):
-                rv.append(needed_approval)
-        return rv
-
-    @with_db
     @require_permission('edit', strip_auth=False)
     @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
     def activate(self, auth_user=None, session=None):
@@ -197,12 +172,6 @@ class InterestBase(object):
             logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
             self._model_instance.status = LifecycleStatus.ACTIVE
         session.add(self._model_instance)
-
-    @with_db
-    @require_permission('edit', strip_auth=False)
-    @require_state([LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
-    def approve(self, approval_type, auth_user=None, session=None):
-        pass
 
     @property
     def roles(self):
@@ -404,7 +373,7 @@ class InterestBase(object):
     @require_permission(action='read', strip_auth=False, required=False)
     def export(self, session=None, auth_user=None,
                include_permissions=False,
-               include_roles=False):
+               include_roles=False, **kwargs):
         rv = {
             'name': self.name,
             'type': self.type_name,
@@ -419,11 +388,17 @@ class InterestBase(object):
             rv[field] = getattr(self, field)
         if include_roles or include_permissions:
             user_roles = self.get_user_effective_roles(auth_user, session=session)
-        if include_roles:
-            rv['roles'] = sorted(user_roles)
-        if include_permissions:
-            rv['permissions'] = sorted(self.model.role_spec.get_roles_permissions(user_roles))
+            if include_roles:
+                rv['roles'] = sorted(user_roles)
+            if include_permissions:
+                rv['permissions'] = sorted(self.model.role_spec.get_roles_permissions(user_roles))
+        if hasattr(super(), 'export'):
+            rv.update(super().export(session=session, auth_user=auth_user, **kwargs))
         return rv
+
+    @property
+    def role_spec(self):
+        return self.model.role_spec
 
     @property
     def model_instance(self):

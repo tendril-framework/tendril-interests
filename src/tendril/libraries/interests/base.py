@@ -32,7 +32,7 @@ class GenericInterestLibrary(object):
     enable_membership_api = True
     enable_membership_edit_api = True
 
-    additional_api_generators = []
+    _additional_api_generators = []
 
     @property
     def type_name(self):
@@ -110,6 +110,22 @@ class GenericInterestLibrary(object):
                                                     'action': f'add_child:{self.type_name}'})],
             sort_heuristics=[('type_name', parent_types)])
         return candidate_interests
+
+    @property
+    def additional_api_generators(self):
+        try:
+            mro = list(self.__class__.__mro__)
+        except AttributeError:
+            print(f"There isn't an __mro__ on {self.__class__}. "
+                  f"This is probably a classic class. We don't support this.")
+            return self._additional_api_generators
+        rv = []
+        for cls in mro:
+            if hasattr(cls, '_additional_api_generators'):
+                for generator in cls._additional_api_generators:
+                    if generator not in rv:
+                        rv.append(generator)
+        return rv
 
     def api_generators(self):
         rv = [InterestLibraryRouterGenerator(self)]
