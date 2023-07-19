@@ -325,8 +325,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                        user: AuthUserModel = auth_spec()):
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            asn = item.add_child(child_id, limited=limited,
-                                 auth_user=user, session=session)
+            return item.add_child(child_id, limited=limited,
+                                  auth_user=user, session=session)
 
     async def update_item(self):
         raise NotImplementedError
