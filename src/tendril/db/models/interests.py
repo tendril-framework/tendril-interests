@@ -61,6 +61,16 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
         return relationship("InterestMembershipModel", back_populates='interest', lazy='dynamic')
 
     @declared_attr
+    def approvals(cls):
+        return relationship("InterestApprovalModel", back_populates='context', lazy='select',
+                            foreign_keys='InterestApprovalModel.interest_id')
+
+    @declared_attr
+    def child_approvals(cls):
+        return relationship("InterestApprovalModel", back_populates='interest', lazy='select',
+                            foreign_keys='InterestApprovalModel.context_id')
+
+    @declared_attr
     def children(cls):
         return relationship("InterestModel", secondary="InterestAssociation",
                             primaryjoin="InterestModel.id == InterestAssociationModel.parent_id",
