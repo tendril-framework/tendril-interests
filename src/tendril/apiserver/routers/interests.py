@@ -1,5 +1,7 @@
 
 
+from typing import List
+from typing import Optional
 from fastapi import APIRouter
 from fastapi import Depends
 
@@ -9,6 +11,7 @@ from tendril.authn.users import AuthUserModel
 
 from tendril.libraries import interests
 from tendril.interests import type_spec
+from tendril.common.states import LifecycleStatus
 from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.memberships import UserMembershipsTModel
 from tendril.config import INTERESTS_API_ENABLED
@@ -42,13 +45,24 @@ def get_interest_stub(interest):
     }
 
 
-@interests_router.get("/memberships", response_model=UserMembershipsTModel)
+@interests_router.post("/memberships", response_model=UserMembershipsTModel)
 async def get_user_memberships(user: AuthUserModel = auth_spec(),
                                include_delegated: bool = False,
-                               include_inherited: bool = False):
+                               include_inherited: bool = False,
+                               interest_types: Optional[List[str]] = [],
+                               statuses:Optional[List[LifecycleStatus]] = [],
+                               roles:Optional[List[str]] = []):
+    kwargs = {}
+    if interest_types:
+        kwargs['interest_types'] = interest_types
+    if statuses:
+        kwargs['include_statuses'] = [x.value for x in statuses]
+    if roles:
+        kwargs['include_roles'] = roles
     return user_memberships(user,
                             include_delegated=include_delegated,
-                            include_inherited=include_inherited).render()
+                            include_inherited=include_inherited,
+                            **kwargs).render()
 
 
 @interests_router.get("/name_available", response_model=bool)
