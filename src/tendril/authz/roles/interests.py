@@ -64,17 +64,14 @@ class InterestRoleSpec(object):
     additional_roles_required = []
     parent_required = True
 
+    mixin_scopes = {}
+    mixin_actions = {}
+
     @cached_property
     def activation_requirements(self):
         rv = {'roles_required': [self.apex_role] + self.additional_roles_required,
               'parent_required': self.parent_required,
               'allowed_states': [LifecycleStatus.NEW]}
-        return rv
-
-    @cached_property
-    def approval_requirements(self):
-        rv = {'allowed_states': [LifecycleStatus.APPROVAL],
-              'approvals_needed': []}
         return rv
 
     @cached_property
@@ -104,6 +101,22 @@ class InterestRoleSpec(object):
             f'{self.prefix}:delete': f"Delete operations on '{self.prefix}' interests",
         }
 
+    def _mixin_scopes(self):
+        try:
+            mro = list(self.__class__.__mro__)
+            mro.reverse()
+        except AttributeError:
+            print(f"There isn't an __mro__ on {self.__class__}. "
+                  f"This is probably a classic class. We don't support this.")
+            return self.mixin_scopes
+        rv = {}
+        for cls in mro:
+            v = getattr(cls, 'mixin_scopes', {})
+            if hasattr(v, '__get__'):
+                v = v.__get__(self)
+            rv.update(v)
+        return rv
+
     def _custom_scopes(self):
         return {}
 
@@ -111,6 +124,7 @@ class InterestRoleSpec(object):
     def scopes(self):
         rv = {}
         rv.update(self._standard_scopes())
+        rv.update(self._mixin_scopes())
         rv.update(self._custom_scopes())
         return rv
 
@@ -176,6 +190,22 @@ class InterestRoleSpec(object):
             'delete_artefact': (self.artefact_delete_role or self.apex_role, f'{self.prefix}:delete'),
         }
 
+    def _mixin_actions(self):
+        try:
+            mro = list(self.__class__.__mro__)
+            mro.reverse()
+        except AttributeError:
+            print(f"There isn't an __mro__ on {self.__class__}. "
+                  f"This is probably a classic class. We don't support this.")
+            return self.mixin_actions
+        rv = {}
+        for cls in mro:
+            v = getattr(cls, 'mixin_actions', {})
+            if hasattr(v, '__get__'):
+                v = v.__get__(self)
+            rv.update(v)
+        return rv
+
     def _custom_actions(self):
         return {}
 
@@ -186,6 +216,7 @@ class InterestRoleSpec(object):
         rv.update(self._authz_actions())
         rv.update(self._hierarchy_actions())
         rv.update(self._artefact_actions())
+        rv.update(self._mixin_actions())
         rv.update(self._custom_actions())
         return rv
 
@@ -233,9 +264,12 @@ class InterestRoleSpec(object):
         return allowed
 
     def get_permitted_roles(self, action):
-        while action not in self.actions.keys():
+        if action not in self.actions.keys():
             if ':' in action:
-                action = action.rsplit(':', 1)[0]
+               action = action.rsplit(':', 1)[0]
+        if action not in self.actions.keys():
+            raise ValueError(f"Action {action} does not seem to be "
+                             f"recognized by {self.__class__.__name__}")
         return set(self.get_accepted_roles(self.actions[action][0]))
 
     def check_permitted(self, action, roles):

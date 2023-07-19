@@ -32,6 +32,8 @@ from tendril.utils.db import register_for_create
 from tendril.utils.versions import get_namespace_package_names
 
 from tendril.db.controllers.interests import register_interest_role
+from tendril.db.controllers.interests_approvals import register_approval_type
+from tendril.authz.approvals.interests import ApprovalRequirement
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEBUG)
@@ -47,6 +49,7 @@ class InterestManager(object):
         self.possible_parents = {}
         self.possible_paths = {}
         self.possible_ancestors = {}
+        self._approval_types = {}
         self.all_actions = {}
         self._roles = {}
         self._docs = []
@@ -77,6 +80,23 @@ class InterestManager(object):
     def commit_interest_roles(self, session=None):
         for name, doc in self._roles.items():
             register_interest_role(name, doc, session=session)
+
+    def register_approval_type(self, approval_type: ApprovalRequirement):
+        logger.info(f"Registering Interest Approval Type '{approval_type.name}'")
+        if approval_type.name in self._approval_types.keys():
+            pass
+        self._approval_types[approval_type.name] = approval_type
+
+    def extract_approval_types(self):
+        for interest_type_name, interest_type in self._types.items():
+            if hasattr(interest_type, 'approval_spec'):
+                for approval_type in interest_type.model.approval_spec.recognized_approvals:
+                    self.register_approval_type(approval_type)
+
+    @with_db
+    def commit_approval_types(self, session=None):
+        for name, approval_type in self._approval_types.items():
+            register_approval_type(approval_type, session=session)
 
     @property
     def types(self):
@@ -152,7 +172,10 @@ class InterestManager(object):
              for a, r in t.model.role_spec.actions.items()})
             for t in self._types.values()]
 
+        self.extract_approval_types()
+
         register_for_create(self.commit_interest_roles)
+        register_for_create(self.commit_approval_types)
 
     def __getattr__(self, item):
         if item == '__file__':
