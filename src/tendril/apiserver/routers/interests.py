@@ -12,10 +12,17 @@ from tendril.authn.users import AuthUserModel
 from tendril.libraries import interests
 from tendril.interests import type_spec
 from tendril.common.states import LifecycleStatus
+
+from tendril.db.controllers.interests import get_interest
+from tendril.common.interests.representations import rewrap_interest
+from tendril.common.interests.representations import get_interest_stub
+
 from tendril.common.interests.memberships import user_memberships
 from tendril.common.interests.memberships import UserMembershipsTModel
+
 from tendril.config import INTERESTS_API_ENABLED
 
+from tendril.utils.db import get_session
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
@@ -37,12 +44,19 @@ async def get_interest_types():
     return {'interest_types': type_spec}
 
 
-def get_interest_stub(interest):
-    return {
-        'type_name': interest.type_name,
-        'name': interest.name,
-        'id': interest.id,
-    }
+@interests_router.get("/{id}/stub")
+async def interest_stubs(id: int,
+                         user: AuthUserModel = auth_spec()):
+    with get_session() as session:
+        interest = get_interest(id=id, session=session)
+        interest = rewrap_interest(interest)
+
+        # We can't expect the user to have permissions on the interest, for
+        # instance when looking at platform information from the content
+        # interest's perspective for approvals. The stub will have to be
+        # treated as public (any logged in user).
+        # interest.export(auth_user=user, probe_only=True, session=session)
+        return get_interest_stub(interest)
 
 
 @interests_router.post("/memberships", response_model=UserMembershipsTModel)
