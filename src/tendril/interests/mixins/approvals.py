@@ -40,6 +40,8 @@ class InterestMixinBase(ABC):
 
 
 class InterestApprovalsMixin(InterestMixinBase):
+    additional_activation_checks = ['check_activation_approvals']
+
     @property
     def approval_spec(self) -> InterestApprovalSpec:
         return self.model.approval_spec
@@ -72,7 +74,7 @@ class InterestApprovalsMixin(InterestMixinBase):
         return False
 
     @with_db
-    @require_permission('read_approvals', strip_auth=False)
+    @require_permission('read_approvals', strip_auth=False, required=False)
     def approvals_required(self, auth_user=None, session=None) -> Iterator[ApprovalRequirement]:
         return chain(self.approval_spec.required_approvals,
                      self.user_mandated_approvals(session=session))
@@ -100,17 +102,23 @@ class InterestApprovalsMixin(InterestMixinBase):
 
     @with_db
     def signal_approval_granted(self, approval, session=None):
-        print(f"SIGNAL : APPROVAL_GRANTED : {approval}")
+        # print(f"SIGNAL : APPROVAL_GRANTED : {approval}")
         self._clear_approval_cache()
+        if self.status == LifecycleStatus.APPROVAL:
+            if self.check_activation_approvals(auth_user=None, session=session):
+                self.activate(session=session)
 
     @with_db
     def signal_approval_withdrawn(self, approval, session=None):
-        print(f"SIGNAL : APPROVAL_WITHDRAWN : {approval}")
+        # print(f"SIGNAL : APPROVAL_WITHDRAWN : {approval}")
         self._clear_approval_cache()
+        if self.status == LifecycleStatus.ACTIVE:
+            if not self.check_activation_approvals(auth_user=None, session=session):
+                self.deactivate(session=session)
 
     @with_db
     def signal_approval_rejected(self, approval, session=None):
-        print(f"SIGNAL : APPROVAL_REJECTED : {approval}")
+        # print(f"SIGNAL : APPROVAL_REJECTED : {approval}")
         self._clear_approval_cache()
 
     @with_db
@@ -152,11 +160,37 @@ class InterestApprovalsMixin(InterestMixinBase):
         pass
 
     @with_db
-    @require_permission('read_approvals', strip_auth=False)
+    @require_permission('read_approvals', strip_auth=False, required=False)
     def approvals_pending(self, auth_user=None, session=None) -> Iterator[ApprovalRequirement]:
         for required_approval in self.approvals_required(auth_user=auth_user, session=session):
             if not self._check_approval(required_approval, session=session):
                 yield required_approval
+
+    @with_db
+    @require_state([LifecycleStatus.ACTIVE, LifecycleStatus.APPROVAL])
+    def check_accepts_approval(self, session=None):
+        return True
+
+    @with_db
+    @require_permission('read_approvals', strip_auth=False, required=False)
+    def check_activation_approvals(self, auth_user=None, session=None):
+        if not self._check_needs_approval(session=session):
+            return True
+
+        pending_approvals = list(self.approvals_pending(auth_user=auth_user, session=session))
+        if len(pending_approvals):
+            # TODO Signal for approvals?
+            if self._model_instance.status != LifecycleStatus.APPROVAL:
+                logger.info(f"Initiating activation of "
+                            f"{self.model.type_name} Interest {self.id} {self.name} "
+                            f"pending Required Approvals")
+                self._model_instance.status = LifecycleStatus.APPROVAL
+            else:
+                logger.debug(f"{self.model.type_name} Interest {self.id} {self.name} "
+                             f"is still pending approvals. Not activating.")
+            return False
+        else:
+            return True
 
     @with_db
     @require_permission('read_approvals', strip_auth=False)
@@ -293,6 +327,7 @@ class InterestApprovalsContextMixin(InterestMixinBase):
     @require_permission('grant_approvals', strip_auth=False)
     def approval_grant(self, subject, approval_type=None, auth_user=None, session=None):
         subject = self._get_approval_subject(subject, session=session)
+        subject.check_accepts_approval(session=session)
         approval_type = self.approval_type_discriminator(subject=subject, approval_type=approval_type,
                                                          auth_user=auth_user, session=session)
         result = register_approval(approval_type, self.model_instance,
