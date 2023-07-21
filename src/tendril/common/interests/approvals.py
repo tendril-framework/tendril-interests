@@ -78,6 +78,8 @@ class ApprovalCollector(object):
         return list(df.select(['context', 'approval']).unique().rows())
 
     def approvals(self, subject, context, name, approved=True):
+        if not self.df.select(polars.count()).item():
+            return []
         df = self.df.filter((polars.col("subject") == subject) &
                             (polars.col("context") == context) &
                             (polars.col("approval") == name) &
