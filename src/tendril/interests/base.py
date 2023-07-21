@@ -64,6 +64,7 @@ class InterestBase(object):
     additional_fields = []
     additional_creation_fields = []
     additional_export_fields = []
+    additional_activation_checks = []
 
     def __init__(self, name, info=None, must_create=False,
                  can_create=True, session=None):
@@ -143,35 +144,57 @@ class InterestBase(object):
             if not len(self.parents(limited=False, session=session)):
                 raise RequiredParentNotPresent(self.id, self.name)
 
+    @property
+    def _additional_activation_checks(self):
+        try:
+            mro = list(self.__class__.__mro__)
+        except AttributeError:
+            print(f"There isn't an __mro__ on {self.__class__}. "
+                  f"This is probably a classic class. We don't support this.")
+            return self.additional_activation_checks
+        rv = []
+        for cls in mro:
+            if hasattr(cls, 'additional_activation_checks'):
+                for check_fn in cls.additional_activation_checks:
+                    rv.append(check_fn)
+        return rv
+
     @with_db
-    @require_permission('edit', strip_auth=False)
+    @require_permission('edit', strip_auth=False, required=False)
     @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
     def activate(self, auth_user=None, session=None):
         if self.model_instance.status == LifecycleStatus.ACTIVE:
-            logger.info(f"{self.model.type_name} Interest {self.id} {self.name} "
-                        f"is already active")
-            return
+            msg = f"{self.model.type_name} Interest {self.id} {self.name} is already active"
+            logger.info(msg)
+            return False, msg
 
         self._check_activation_requirements(session=session)
 
-        if self._check_needs_approval(session=session):
-            pending_approvals = self._pending_approvals(session=session)
-            if len(pending_approvals):
-                # TODO Signal for approvals?
-                if self._model_instance.status != LifecycleStatus.APPROVAL:
-                    logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name} "
-                                f"pending Required Approvals")
-                    self._model_instance.status = LifecycleStatus.APPROVAL
-                else:
-                    logger.debug(f"{self.model.type_name} Interest {self.id} {self.name} "
-                                 f"is still pending approval")
+        for check_fn_orig in self._additional_activation_checks:
+            if not callable(check_fn_orig):
+                check_fn = getattr(self, check_fn_orig)
             else:
-                logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
-                self._model_instance.status = LifecycleStatus.ACTIVE
-        else:
-            logger.info(f"Activating {self.model.type_name} Interest {self.id} {self.name}")
-            self._model_instance.status = LifecycleStatus.ACTIVE
+                check_fn = check_fn_orig
+            result = check_fn(auth_user=auth_user, session=session)
+            if not result:
+                return False, f"Additional activation check '{check_fn_orig}' failed. " \
+                              f"Will not activate."
+
+        self._model_instance.status = LifecycleStatus.ACTIVE
         session.add(self._model_instance)
+        msg = f"Activated {self.model.type_name} Interest {self.id} {self.name}"
+        logger.info(msg)
+        return True, msg
+
+    @with_db
+    @require_permission('edit', strip_auth=False, required=False)
+    @require_state([LifecycleStatus.ACTIVE, LifecycleStatus.APPROVAL])
+    def deactivate(self, auth_user=None, session=None):
+        self._model_instance.status = LifecycleStatus.NEW
+        session.add(self.model_instance)
+        msg = f"Deactivated {self.model.type_name} Interest {self.id} {self.name}"
+        logger.info(msg)
+        return msg
 
     @property
     def roles(self):
