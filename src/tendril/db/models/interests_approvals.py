@@ -5,6 +5,7 @@ from sqlalchemy import Column
 from sqlalchemy import String
 from sqlalchemy import Integer
 from sqlalchemy import Boolean
+from sqlalchemy import UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from sqlalchemy import ForeignKey
@@ -38,15 +39,19 @@ class ApprovalTypeModel(DeclBase, BaseMixin):
 
 
 class InterestApprovalModel(DeclBase, BaseMixin, UserMixin, TimestampMixin):
-    interest_id: Mapped[int] = mapped_column(ForeignKey('Interest.id'))
+    interest_id: Mapped[int] = mapped_column(ForeignKey('Interest.id'), nullable=False)
     interest = relationship('InterestModel', back_populates='approvals',
                             lazy='selectin', foreign_keys=interest_id)
 
-    context_id: Mapped[int] = mapped_column(ForeignKey('Interest.id'))
+    context_id: Mapped[int] = mapped_column(ForeignKey('Interest.id'), nullable=False)
     context = relationship('InterestModel', back_populates='child_approvals',
                            lazy='selectin', foreign_keys=context_id)
 
-    approval_type_id = Column(Integer, ForeignKey('ApprovalType.id'))
+    approval_type_id = Column(Integer, ForeignKey('ApprovalType.id'), nullable=False)
     approval_type = relationship('ApprovalTypeModel', lazy='selectin')
 
     approved = Column(Boolean, nullable=False, default=True)
+
+    __table_args__ = (
+        UniqueConstraint('interest_id', 'context_id', 'approval_type_id', 'user_id'),
+    )
