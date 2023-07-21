@@ -1,6 +1,7 @@
 
 
 from typing import List
+from typing import Optional
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -12,6 +13,7 @@ from tendril.authn.users import authn_dependency
 
 from tendril.apiserver.templates.base import ApiRouterGenerator
 from tendril.common.interests.approvals import ApprovalRequirementTModel
+from tendril.common.interests.approvals import InterestApprovalStatusTModel
 
 from tendril.utils.db import get_session
 
@@ -35,7 +37,9 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
 
     async def get_approvals_status(self, request: Request, id: int,
                                    user: AuthUserModel = auth_spec()):
-        pass
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            return item.approvals(auth_user=user, session=session).render_subject_perspective()[0]
 
     def generate(self, name):
         desc = f'Approvals API for {name} Interests'
@@ -54,7 +58,7 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
 
         router.add_api_route("/{id}/approvals/status", self.get_approvals_status, methods=["GET"],
-                             # response_model=[],
+                             response_model=InterestApprovalStatusTModel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
 
@@ -66,10 +70,15 @@ class InterestApprovalContextRouterGenerator(ApiRouterGenerator):
         super(InterestApprovalContextRouterGenerator, self).__init__()
         self._actual = actual
 
-    async def get_approvals_status(self, request: Request, id: int,
-                                   subject_id: int,
-                                   user: AuthUserModel = auth_spec()):
-        pass
+    async def get_approvals(self, request: Request, id: int,
+                            subject_id: int, approval_type: Optional[str] = None,
+                            user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            context = self._actual.item(id, session=session)
+            ac = context.get_approval(subject_id, auth_user=user, session=session)
+            if approval_type:
+                ac.apply_approval_filter([approval_type])
+            return ac.render_context_perspective()[0]
 
     async def grant_approval(self, request: Request, id: int,
                              subject_id: int, approval_type: str = None,
