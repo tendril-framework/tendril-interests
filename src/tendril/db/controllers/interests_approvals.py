@@ -4,6 +4,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.exc import MultipleResultsFound
 
+from tendril.interests.base import InterestBase
 from tendril.db.controllers.interests import preprocess_user
 from tendril.db.controllers.interests import preprocess_interest
 from tendril.db.controllers.interests import get_interest_role
@@ -117,6 +118,7 @@ def withdraw_approval(approval_type, context, subject, user, session=None):
                                          user=user, session=session)
         session.delete(existing_approval)
         session.flush()
+        return existing_approval
     except NoResultFound:
         raise ValueError("User does not seem to have provided an approval or rejection for this combination "
                          "of context, subject, and approval_type. Nothing to withdraw.")
