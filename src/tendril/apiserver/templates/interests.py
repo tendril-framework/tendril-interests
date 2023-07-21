@@ -201,12 +201,45 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         """
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            item.activate(auth_user=user, session=session)
+            result, msg = item.activate(auth_user=user, session=session)
+        if result:
+            status_code = 200
+        else:
+            status_code = 406
+        return JSONResponse(
+            status_code=status_code,
+            content={'message': msg}
+        )
+
+    async def deactivate_item(self, request: Request, id: int,
+                              user: AuthUserModel = auth_spec()):
+        """
+        Deactivate a specified interest.
+
+        This endpoint enforces interest access control, and executes only if
+        the logged-in user (identified by the access token) has the necessary
+        permissions.
+
+        Activated interests disallow most modifying operations to be carried out
+        on them. Usually, the operations needed to modify the interest in a
+        significant was is only allowed when the interest is new.
+
+        Note that such changes may also (independent of this endpoint) rescind
+        approvals granted to the interest in the past.
+
+        The endpoint parameters are:
+
+         - **id :** The id of the interest to be activated
+         - **user :** The requesting user, identified by the access token.
+        """
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            msg = item.deactivate(auth_user=user, session=session)
         return JSONResponse(
             status_code=200,
-            content={'message': f"{self._actual.interest_class.model.role_spec.prefix} "
-                                f"{id} Activated"}
+            content={'message': msg}
         )
+
 
     async def item_members(self, request: Request, id: int,
                            user: AuthUserModel = auth_spec(),
