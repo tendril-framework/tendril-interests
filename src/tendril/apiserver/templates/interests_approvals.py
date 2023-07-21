@@ -39,7 +39,11 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
                                    user: AuthUserModel = auth_spec()):
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            return item.approvals(auth_user=user, session=session).render_subject_perspective()[0]
+            result = item.approvals(auth_user=user, session=session).render_subject_perspective()
+            if len(result):
+                return result[0]
+            else:
+                return {'subject': id, 'contexts': []}
 
     def generate(self, name):
         desc = f'Approvals API for {name} Interests'
@@ -75,10 +79,14 @@ class InterestApprovalContextRouterGenerator(ApiRouterGenerator):
                             user: AuthUserModel = auth_spec()):
         with get_session() as session:
             context = self._actual.item(id, session=session)
-            ac = context.get_approval(subject_id, auth_user=user, session=session)
+            ac = context.get_approvals(subject_id, auth_user=user, session=session)
             if approval_type:
                 ac.apply_approval_filter([approval_type])
-            return ac.render_context_perspective()[0]
+            result = ac.render_context_perspective()
+            if len(result):
+                return result[0]
+            else:
+                return {'subject': id, 'contexts': []}
 
     async def grant_approval(self, request: Request, id: int,
                              subject_id: int, approval_type: str = None,
@@ -108,7 +116,7 @@ class InterestApprovalContextRouterGenerator(ApiRouterGenerator):
                            dependencies=[Depends(authn_dependency)])
 
         router.add_api_route("/{id}/approvals/{subject_id}/status",
-                             self.get_approvals_status, methods=["GET"],
+                             self.get_approvals, methods=["GET"],
                              # response_model=[],
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
