@@ -136,7 +136,8 @@ def preprocess_interest(interest, type=None, session=None):
         return interest.id
     elif isinstance(interest, InterestModel):
         return interest.id
-
+    elif hasattr(interest, 'id'):
+        return interest.id
 
 @with_db
 def get_membership(interest, user, role, session=None):
