@@ -46,9 +46,11 @@ class UserMembershipCollector(object):
         self.df = polars.DataFrame(self._raw_data)
 
     def apply_status_filter(self, include_statuses):
+        # TODO This will mess with caching!
         self.df = self.df.filter(polars.col('interest.status').is_in(include_statuses))
 
     def apply_role_filter(self, include_roles):
+        # TODO This will mess with caching!
         self.df = self.df.filter(polars.col('role.name').is_in(include_roles))
 
     def _pack_interest_role(self, df):
