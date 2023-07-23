@@ -114,7 +114,7 @@ class InterestApprovalsMixin(InterestMixinBase):
         self._clear_approval_cache()
         if self.status == LifecycleStatus.ACTIVE:
             if not self.check_activation_approvals(auth_user=None, session=session):
-                self.deactivate(session=session)
+                self.unapprove(session=session)
 
     @with_db
     def signal_approval_rejected(self, approval, session=None):
@@ -126,7 +126,7 @@ class InterestApprovalsMixin(InterestMixinBase):
         possible_contexts = []
         if required_approval.context_type == self.model_instance.type_name:
             possible_contexts.append(self.id)
-        for ancestor in self.ancestors():
+        for ancestor in self.ancestors(session=session):
             if ancestor.model_instance.type_name == required_approval.context_type:
                 possible_contexts.append(ancestor.id)
 
@@ -193,7 +193,14 @@ class InterestApprovalsMixin(InterestMixinBase):
             return True
 
     @with_db
-    @require_permission('read_approvals', strip_auth=False)
+    def unapprove(self, session=None):
+        msg = f"Approval shortfall for {self.model.type_name} Interest {self.id} {self.name}"
+        logger.info(msg)
+        self.model_instance.status = LifecycleStatus.APPROVAL
+        return msg
+
+    @with_db
+    @require_permission('read_approvals', strip_auth=False, required=False)
     def export(self, session=None, auth_user=None):
         rv = {}
         if next(self.approvals_pending(auth_user=auth_user, session=session), None):
