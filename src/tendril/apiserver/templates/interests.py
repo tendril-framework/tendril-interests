@@ -10,6 +10,7 @@ from makefun import create_function
 from fastapi import APIRouter
 from fastapi import Request
 from fastapi import Depends
+from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 
 from tendril.authn.users import auth_spec
@@ -142,7 +143,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         new_sig = orig_sig.replace(parameters=params)
         return create_function(func_signature=new_sig, func_impl=ep)
 
-    def create_item(self, item, user: AuthUserModel = auth_spec()):
+    def create_item(self, item,
+                    user: AuthUserModel = auth_spec()):
         """
         Create an Interest.
 
@@ -169,6 +171,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         return rv
 
     async def activate_item(self, request: Request, id: int,
+                            background_tasks: BackgroundTasks,
                             user: AuthUserModel = auth_spec()):
         """
         Activate a specified interest.
@@ -201,7 +204,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         """
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            result, msg = item.activate(auth_user=user, session=session)
+            result, msg = item.activate(background_tasks=background_tasks,
+                                        auth_user=user, session=session)
         if result:
             status_code = 200
         else:

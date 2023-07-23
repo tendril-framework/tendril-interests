@@ -162,7 +162,8 @@ class InterestBase(object):
     @with_db
     @require_permission('edit', strip_auth=False, required=False)
     @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
-    def activate(self, auth_user=None, session=None):
+    def activate(self, background_tasks=None, auth_user=None, session=None):
+
         if self.model_instance.status == LifecycleStatus.ACTIVE:
             msg = f"{self.model.type_name} Interest {self.id} {self.name} is already active"
             logger.info(msg)
