@@ -404,6 +404,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
 
             router.add_api_route("/{id:int}/activate", self.activate_item, methods=['POST'],
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
+            router.add_api_route("/{id:int}/deactivate", self.deactivate_item, methods=['POST'],
+                                 dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
 
         router.add_api_route("/{id:int}", self.item, methods=["GET"],
                              response_model=self._actual.interest_class.tmodel,
