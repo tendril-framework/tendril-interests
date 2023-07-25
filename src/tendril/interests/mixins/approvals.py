@@ -128,7 +128,9 @@ class InterestApprovalsMixin(InterestMixinBase):
         if required_approval.context_type == self.model_instance.type_name:
             possible_contexts.append(self.id)
         for ancestor in self.ancestors(session=session):
+            logger.debug(f"Trying Ancestor  : {ancestor.type_name} {ancestor.id}")
             if ancestor.model_instance.type_name == required_approval.context_type:
+                logger.debug(f"Found Possible Context {ancestor.type_name} {ancestor.id}")
                 possible_contexts.append(ancestor.id)
 
         if len(possible_contexts) == 0:

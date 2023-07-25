@@ -356,11 +356,10 @@ class InterestBase(object):
     @with_db
     @require_permission('read', strip_auth=False, required=False)
     def ancestors(self, auth_user=None, session=None):
-        parents = self.parents(auth_user=auth_user, session=session)
-        ancestors = []
+        ancestors = set(self.parents(auth_user=auth_user, session=session))
         for parent in parents:
-            ancestors += parent.parents(auth_user=auth_user, session=session)
-        return parents + ancestors
+            ancestors.union(parent.ancestors(auth_user=auth_user, session=session))
+        return ancestors
 
     @with_db
     @require_permission('read_children', strip_auth=False, required=False,
