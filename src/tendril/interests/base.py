@@ -356,9 +356,11 @@ class InterestBase(object):
     @with_db
     @require_permission('read', strip_auth=False, required=False)
     def ancestors(self, auth_user=None, session=None):
-        ancestors = self.parents(auth_user=auth_user, session=session)
+        rv = []
+        parents = self.parents(auth_user=auth_user, session=session)
+        rv.extend(parents)
         for parent in parents:
-            ancestors.extend(parent.ancestors(auth_user=auth_user, session=session))
+            rv.extend(parent.ancestors(auth_user=auth_user, session=session))
         return ancestors
 
     @with_db
