@@ -185,6 +185,7 @@ class InterestApprovalsMixin(InterestMixinBase):
                             f"{self.model.type_name} Interest {self.id} {self.name} "
                             f"pending Required Approvals")
                 self._model_instance.status = LifecycleStatus.APPROVAL
+                return False
             else:
                 logger.debug(f"{self.model.type_name} Interest {self.id} {self.name} "
                              f"is still pending approvals. Not activating.")

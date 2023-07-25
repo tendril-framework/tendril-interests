@@ -35,7 +35,7 @@ from tendril.authz.roles.interests import normalize_type_name
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__, log.DEBUG)
 
 
 class InterestBaseCreateTModel(TendrilTBaseModel):
@@ -169,18 +169,23 @@ class InterestBase(object):
             logger.info(msg)
             return False, msg
 
+        logger.debug(f"Checking Activation Requirements for {self.type_name} {self.id}")
         self._check_activation_requirements(session=session)
 
         for check_fn_orig in self._additional_activation_checks:
+            logger.debug(f"Trying Additional Activation Check for {self.type_name} {self.id} : {check_fn_orig}")
             if not callable(check_fn_orig):
                 check_fn = getattr(self, check_fn_orig)
             else:
                 check_fn = check_fn_orig
             result = check_fn(auth_user=auth_user, session=session)
             if not result:
-                return False, f"Additional activation check '{check_fn_orig}' failed. " \
-                              f"Will not activate."
+                msg = f"Additional activation check '{check_fn_orig}' failed. " \
+                      f"Will not activate."
+                logger.debug(msg)
+                return False, msg
 
+        logger.debug(f"Passed all activation checks. Activating {self.type_name} {self.id}")
         self._model_instance.status = LifecycleStatus.ACTIVE
         session.add(self._model_instance)
         msg = f"Activated {self.model.type_name} Interest {self.id} {self.name}"
