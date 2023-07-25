@@ -174,6 +174,7 @@ class InterestApprovalsMixin(InterestMixinBase):
         for required_approval in self.approvals_required(auth_user=auth_user, session=session):
             logger.debug(f"Checking for {required_approval}")
             if not self._check_approval(required_approval, session=session):
+                logger.debug(f"Found a pending approval {required_approval.name}")
                 yield required_approval
 
     @with_db

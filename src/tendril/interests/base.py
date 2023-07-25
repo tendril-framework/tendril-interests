@@ -163,7 +163,7 @@ class InterestBase(object):
     @require_permission('edit', strip_auth=False, required=False)
     @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
     def activate(self, background_tasks=None, auth_user=None, session=None):
-
+        logger.debug(f"Attempting to activate {self.type_name} {self.id}")
         if self.model_instance.status == LifecycleStatus.ACTIVE:
             msg = f"{self.model.type_name} Interest {self.id} {self.name} is already active"
             logger.info(msg)
@@ -184,6 +184,8 @@ class InterestBase(object):
                       f"Will not activate."
                 logger.debug(msg)
                 return False, msg
+            else:
+                logger.debug(f"Additional activation check '{check_fn_orig}' passed. Got {result}.")
 
         logger.debug(f"Passed all activation checks. Activating {self.type_name} {self.id}")
         self._model_instance.status = LifecycleStatus.ACTIVE
