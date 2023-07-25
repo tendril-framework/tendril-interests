@@ -35,7 +35,7 @@ from tendril.authz.roles.interests import normalize_type_name
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEBUG)
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestBaseCreateTModel(TendrilTBaseModel):
@@ -163,17 +163,17 @@ class InterestBase(object):
     @require_permission('edit', strip_auth=False, required=False)
     @require_state([LifecycleStatus.NEW, LifecycleStatus.APPROVAL, LifecycleStatus.ACTIVE])
     def activate(self, background_tasks=None, auth_user=None, session=None):
-        logger.debug(f"Attempting to activate {self.type_name} {self.id}")
+        # logger.debug(f"Attempting to activate {self.type_name} {self.id}")
         if self.model_instance.status == LifecycleStatus.ACTIVE:
             msg = f"{self.model.type_name} Interest {self.id} {self.name} is already active"
             logger.info(msg)
             return False, msg
 
-        logger.debug(f"Checking Activation Requirements for {self.type_name} {self.id}")
+        # logger.debug(f"Checking Activation Requirements for {self.type_name} {self.id}")
         self._check_activation_requirements(session=session)
 
         for check_fn_orig in self._additional_activation_checks:
-            logger.debug(f"Trying Additional Activation Check for {self.type_name} {self.id} : {check_fn_orig}")
+            # logger.debug(f"Trying Additional Activation Check for {self.type_name} {self.id} : {check_fn_orig}")
             if not callable(check_fn_orig):
                 check_fn = getattr(self, check_fn_orig)
             else:
@@ -184,8 +184,8 @@ class InterestBase(object):
                       f"Will not activate."
                 logger.debug(msg)
                 return False, msg
-            else:
-                logger.debug(f"Additional activation check '{check_fn_orig}' passed. Got {result}.")
+            # else:
+            #   logger.debug(f"Additional activation check '{check_fn_orig}' passed. Got {result}.")
 
         logger.debug(f"Passed all activation checks. Activating {self.type_name} {self.id}")
         self._model_instance.status = LifecycleStatus.ACTIVE
