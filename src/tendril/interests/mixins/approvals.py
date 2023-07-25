@@ -26,7 +26,7 @@ from tendril.db.controllers.interests_approvals import withdraw_approval
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__, log.DEBUG)
 
 
 class InterestBaseApprovalTMixin(TendrilTBaseModel):
@@ -123,6 +123,7 @@ class InterestApprovalsMixin(InterestMixinBase):
 
     @with_db
     def _check_approval(self, required_approval: ApprovalRequirement, session=None):
+        logger.debug(f"Checking {self.type_name} {self.id} for {required_approval.name}")
         possible_contexts = []
         if required_approval.context_type == self.model_instance.type_name:
             possible_contexts.append(self.id)
@@ -131,6 +132,9 @@ class InterestApprovalsMixin(InterestMixinBase):
                 possible_contexts.append(ancestor.id)
 
         if len(possible_contexts) == 0:
+            logger.debug(f"Found no possible contexts of type "
+                         f"{required_approval.context_type} "
+                         f"the hierarchy for {self.id}.")
             return True
 
         approvals = []
@@ -139,20 +143,24 @@ class InterestApprovalsMixin(InterestMixinBase):
                 approvals(subject=self.id, context=context,
                           name=required_approval.name, approved=False)
             if len(rejections):
+                logger.debug("Rejections present. Not checking further.")
                 return False
             approvals += self.approvals(session=session).\
                 approvals(subject=self.id, context=context,
                           name=required_approval.name)
 
         if required_approval.spread == 0:
+            logger.debug(f"Required spread is 0. Not checking for approvals.")
             return True
 
         if required_approval.spread < 0:
             raise NotImplementedError
 
         if len(approvals) >= required_approval.spread:
+            logger.debug(f"Found {len(approvals)} approvals, require {required_approval.spread}. Approved.")
             return True
 
+        logger.debug("No Approval")
         return False
 
     @with_db
@@ -162,7 +170,9 @@ class InterestApprovalsMixin(InterestMixinBase):
     @with_db
     @require_permission('read_approvals', strip_auth=False, required=False)
     def approvals_pending(self, auth_user=None, session=None) -> Iterator[ApprovalRequirement]:
+        logger.debug(f"Checking for pending approvals for interest {self.id}")
         for required_approval in self.approvals_required(auth_user=auth_user, session=session):
+            logger.debug(f"Checking for {required_approval}")
             if not self._check_approval(required_approval, session=session):
                 yield required_approval
 
@@ -175,6 +185,7 @@ class InterestApprovalsMixin(InterestMixinBase):
     @require_permission('read_approvals', strip_auth=False, required=False)
     def check_activation_approvals(self, auth_user=None, session=None):
         if not self._check_needs_approval(session=session):
+            logger.debug(f"No approvals needed for activation of {self.type_name} {self.id}")
             return True
 
         pending_approvals = list(self.approvals_pending(auth_user=auth_user, session=session))
