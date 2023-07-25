@@ -137,6 +137,7 @@ class InterestApprovalsMixin(InterestMixinBase):
             logger.debug(f"Found no possible contexts of type "
                          f"{required_approval.context_type} "
                          f"the hierarchy for {self.id}.")
+            logger.debug(f"Got Ancestors : {self.ancestors(session=session)}")
             return True
 
         approvals = []
