@@ -204,9 +204,9 @@ class InterestApprovalsMixin(InterestMixinBase):
     def export(self, session=None, auth_user=None):
         rv = {}
         if next(self.approvals_pending(auth_user=auth_user, session=session), None):
-            rv['approved'] = True
-        else:
             rv['approved'] = False
+        else:
+            rv['approved'] = True
         return rv
 
 
