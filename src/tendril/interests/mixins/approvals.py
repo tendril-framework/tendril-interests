@@ -26,7 +26,7 @@ from tendril.db.controllers.interests_approvals import withdraw_approval
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEBUG)
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestBaseApprovalTMixin(TendrilTBaseModel):
