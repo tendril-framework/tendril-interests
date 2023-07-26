@@ -361,7 +361,7 @@ class InterestBase(object):
         rv.extend(parents)
         for parent in parents:
             rv.extend(parent.ancestors(auth_user=auth_user, session=session))
-        return ancestors
+        return rv
 
     @with_db
     @require_permission('read_children', strip_auth=False, required=False,
