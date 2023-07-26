@@ -23,6 +23,12 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
         super(InterestApprovalRouterGenerator, self).__init__()
         self._actual = actual
 
+    async def request_approvals(self, request: Request, id: int,
+                                user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            return item.request_approvals(auth_user=user, session=session)
+
     async def get_required_approvals(self, request: Request, id: int,
                                      user: AuthUserModel = auth_spec()):
         with get_session() as session:
@@ -50,6 +56,11 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
         prefix = self._actual.interest_class.model.role_spec.prefix
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
+
+        router.add_api_route("/{id}/request_approvals", self.request_approvals, methods=["POST"],
+                             response_model=str,
+                             response_model_exclude_none=True,
+                             dependencies=[auth_spec(scopes=[f'{prefix}:edit'])])
 
         router.add_api_route("/{id}/approvals/required", self.get_required_approvals, methods=["GET"],
                              response_model=List[ApprovalRequirementTModel],

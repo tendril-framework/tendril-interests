@@ -196,17 +196,42 @@ class InterestApprovalsMixin(InterestMixinBase):
         if len(pending_approvals):
             # TODO Signal for approvals?
             if self._model_instance.status != LifecycleStatus.APPROVAL:
-                logger.info(f"Initiating activation of "
-                            f"{self.model.type_name} Interest {self.id} {self.name} "
-                            f"pending Required Approvals")
+                logger.info(f"Initiating requests for required approvals of "
+                            f"{self.model.type_name} {self.id} {self.name}")
                 self._model_instance.status = LifecycleStatus.APPROVAL
                 return False
             else:
-                logger.debug(f"{self.model.type_name} Interest {self.id} {self.name} "
-                             f"is still pending approvals. Not activating.")
+                logger.debug(f"{self.model.type_name} {self.id} {self.name} "
+                             f"is still pending approvals. Cannot activate.")
             return False
         else:
             return True
+
+    @with_db
+    @require_state(LifecycleStatus.NEW)
+    @require_permission('edit', strip_auth=False, required=False)
+    def request_approvals(self, auth_user=None, session=None):
+        self._check_activation_requirements(session=session)
+
+        for check_fn_orig in self._additional_activation_checks:
+            if check_fn_orig == 'check_activation_approvals':
+                continue
+
+            if not callable(check_fn_orig):
+                check_fn = getattr(self, check_fn_orig)
+            else:
+                check_fn = check_fn_orig
+            result = check_fn(auth_user=auth_user, session=session)
+            if not result:
+                msg = f"Additional activation check '{check_fn_orig}' failed. " \
+                      f"Cannot activate, will not request approvals in this condition."
+                return msg
+
+        can_activate = self.check_activation_approvals(auth_user=auth_user, session=session)
+        if can_activate:
+            return f"No further approvals needed for activation of {self.type_name} {self.id}"
+        else:
+            return f"Approval requests initiated for {self.type_name} {self.id}"
 
     @with_db
     def unapprove(self, session=None):
