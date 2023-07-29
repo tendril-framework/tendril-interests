@@ -166,6 +166,8 @@ class InterestMonitorsMixin(InterestMixinBase):
         monitor_values = {}
         for monitor_spec in self._monitors_at_export_level(export_level):
             value = self._monitor_get_value(monitor_spec)
+            if value is None:
+                continue
             if monitor_spec.export_processor:
                 value = monitor_spec.export_processor(value)
             monitor_values[monitor_spec.publish_name()] = value
