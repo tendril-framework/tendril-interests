@@ -149,7 +149,6 @@ class InterestMonitorsMixin(InterestMixinBase):
         value = transit.read(**kwargs)
         if spec.default is not None and not value:
             value = spec.default
-        print(f"GET {spec.publish_name()} {value}")
         return value
 
     def _monitors_at_export_level(self, export_level):
