@@ -35,6 +35,7 @@ core_dependencies = [
     'polars',
     'makefun',
     'asgiref',
+    'tendril-utils-types',
 ]
 
 install_requires = core_dependencies + ['wheel']
