@@ -264,7 +264,11 @@ class InterestBase(object):
 
     @with_db
     def check_user_access(self, user, action, session=None):
-        logger.debug(f"Checking permissions to '{action}' on '{self}' for user '{user.id}'")
+        if hasattr(user, 'id'):
+            user_str = user.id
+        else:
+            user_str = user
+        logger.debug(f"Checking permissions to '{action}' on '{self}' for user '{user_str}'")
         action_roles = self.model.role_spec.get_permitted_roles(action)
         user_roles = set(self.get_user_effective_roles(user, session=session))
         return any(x in user_roles for x in action_roles)
