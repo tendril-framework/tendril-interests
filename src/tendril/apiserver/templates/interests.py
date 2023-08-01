@@ -132,16 +132,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                              include_roles=False,
                              include_permissions=False) for x in result]
 
-    def _inject_create_model(self, ep, param='item'):
-        orig_sig = signature(ep)
-        params = list(orig_sig.parameters.values())
-        orig_param = next(p for p in params if p.name == param)
-        index = params.index(orig_param)
-        new_param = orig_param.replace(name=orig_param.name, default=orig_param.default, kind=orig_param.kind,
-                                       annotation=self._actual.interest_class.tmodel_create)
-        params[index] = new_param
-        new_sig = orig_sig.replace(parameters=params)
-        return create_function(func_signature=new_sig, func_impl=ep)
+    def _inject_create_model(self, ep):
+        return self._inject_model(ep, param='item', model=self._actual.interest_class.tmodel_create)
 
     def create_item(self, item,
                     user: AuthUserModel = auth_spec()):
@@ -168,6 +160,17 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         with get_session() as session:
             item = self._actual.add_item(item, session=session)
             rv = item.export(session=session)
+        return rv
+
+    def _inject_edit_model(self, ep):
+        return self._inject_model(ep, param='changes', model=self._actual.interest_class.tmodel_edit)
+
+    async def edit_item(self, id:int, changes,
+                        user: AuthUserModel = auth_spec()):
+        with get_session() as session:
+            item = self._actual.item(id, session=session)
+            result = item.edit(changes, auth_user=user, session=session)
+            rv = item.export(auth_user=user, session=session)
         return rv
 
     async def activate_item(self, request: Request, id: int,
@@ -408,6 +411,12 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
 
         router.add_api_route("/{id:int}", self.item, methods=["GET"],
+                             response_model=self._actual.interest_class.tmodel,
+                             response_model_exclude_none=True,
+                             dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
+
+        router.add_api_route("/{id:int}/edit", self._inject_edit_model(self.edit_item),
+                             methods=["POST"],
                              response_model=self._actual.interest_class.tmodel,
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])

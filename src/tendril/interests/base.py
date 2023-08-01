@@ -45,6 +45,11 @@ class InterestBaseCreateTModel(TendrilTBaseModel):
     info: dict
 
 
+class InterestBaseEditTModel(TendrilTBaseModel):
+    descriptive_name: Optional[str] = Field(default="", max_length=255)
+    info: Optional[dict]
+
+
 class InterestBaseReadTMixin(TendrilTBaseModel):
     id: int
     roles: Optional[List[str]]
@@ -59,8 +64,9 @@ class InterestBaseTModel(InterestBaseCreateTModel,
 
 class InterestBase(object):
     model = InterestModel
-    tmodel_create = InterestBaseCreateTModel
     tmodel = InterestBaseTModel
+    tmodel_create = InterestBaseCreateTModel
+    tmodel_edit = InterestBaseEditTModel
     additional_fields = []
     additional_creation_fields = []
     additional_export_fields = []
@@ -106,6 +112,15 @@ class InterestBase(object):
     def set_descriptive_name(self, value, session=None):
         self._descriptive_name = value
         self._commit_to_db(session=session)
+
+    @with_db
+    @require_permission('edit', strip_auth=False, required=False)
+    def edit(self, changes, auth_user=None, session=None):
+        for field_name in changes.__fields__:
+            value = getattr(changes, field_name)
+            if value and hasattr(self.model_instance, field_name):
+                setattr(self.model_instance, field_name, value)
+        session.add(self.model_instance)
 
     @property
     def ident(self):
