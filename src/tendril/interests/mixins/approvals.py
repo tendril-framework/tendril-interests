@@ -12,6 +12,7 @@ from tendril.authz.approvals.interests import InterestApprovalSpec
 from tendril.authz.approvals.interests import ApprovalRequirement
 from tendril.common.interests.approvals import ApprovalCollector
 
+from tendril.common.interests.exceptions import ActivationError
 from tendril.db.models.interests_approvals import InterestApprovalModel
 from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests_approvals import get_approval
@@ -26,7 +27,7 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestBaseApprovalTMixin(TendrilTBaseModel):
-    approved: bool
+    has_required_approvals: bool
 
 
 class InterestApprovalsMixin(InterestMixinBase):
@@ -233,13 +234,20 @@ class InterestApprovalsMixin(InterestMixinBase):
     @with_db
     @require_permission('read_approvals', strip_auth=False, required=False)
     def export(self, session=None, auth_user=None, **kwargs):
-        rv = {}
-        if next(self.approvals_pending(auth_user=auth_user, session=session), None):
-            rv['approved'] = False
-        else:
-            rv['approved'] = True
+        # TODO Simplify this by moving the {} creation to the
+        #  ABC and removing the hasattr check.
         if hasattr(super(), 'export'):
-            rv.update(super().export(session=session, auth_user=auth_user, **kwargs))
+            rv = super().export(session=session, auth_user=auth_user, **kwargs)
+        else:
+            rv = {}
+        try:
+            self._check_activation_requirements(session=session)
+            if next(self.approvals_pending(auth_user=auth_user, session=session), None):
+                rv['has_required_approvals'] = False
+            else:
+                rv['has_required_approvals'] = True
+        except ActivationError:
+            rv['has_required_approvals'] = False
         return rv
 
 

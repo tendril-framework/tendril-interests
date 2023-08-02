@@ -11,3 +11,4 @@ class InterestMixinBase(ABC):
     role_spec: InterestRoleSpec
     model_instance: InterestModel
 
+
