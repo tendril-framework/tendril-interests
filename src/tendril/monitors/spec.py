@@ -4,7 +4,6 @@ import json
 from collections.abc import Mapping, Iterable
 from decimal import Decimal
 
-from json import JSONEncoder
 from enum import IntEnum
 from typing import Any
 from typing import Type
