@@ -1,5 +1,16 @@
 
 
+from enum import IntEnum
+
+
+class ExportLevel(IntEnum):
+    ID_ONLY = 0
+    STUB = 1
+    NORMAL = 2
+    DETAILED = 3
+    EVERYTHING = 4
+
+
 def rewrap_interest(model):
     from tendril import interests
     type_name = model.type
@@ -7,9 +18,4 @@ def rewrap_interest(model):
 
 
 def get_interest_stub(interest):
-    return {
-        'type_name': interest.type_name,
-        'name': interest.name,
-        'id': interest.id,
-        'descriptive_name': interest.descriptive_name
-    }
+    return interest.export(export_level=ExportLevel.STUB)
