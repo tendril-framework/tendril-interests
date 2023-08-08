@@ -55,6 +55,10 @@ class InterestLibraryManager(object):
     def libraries(self):
         return list(self._libraries.keys())
 
+    @property
+    def libraries_and_types(self):
+        return {lname: l.type_name for lname, l in self._libraries.items()}
+
     @cached_property
     def libraries_by_typename(self):
         return {x.type_name: x for x in self._libraries.values()}
@@ -73,6 +77,8 @@ class InterestLibraryManager(object):
             return self._libraries[item]
         if item in self._exc_classes.keys():
             return self._exc_classes[item]
+        if item == 'libraries_and_types':
+            return self.libraries_and_types
         raise AttributeError('No attribute {0} in {1}!'
                              ''.format(item, self.__class__.__name__))
 
