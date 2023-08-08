@@ -26,6 +26,7 @@ Tendril Interest Manager (:mod:`tendril.interest.manager`)
 import copy
 import importlib
 import networkx
+from typing import Union
 
 from tendril.utils.db import with_db
 from tendril.utils.db import register_for_create
@@ -147,6 +148,8 @@ class InterestManager(object):
                 x.model.type_name: x
                 for x in self._types.values()
         }
+
+        self.interest_stub_tmodel = Union[*[x.export_tmodel_stub() for x in self._types.values()]]
 
         self._type_spec = {
             key:
