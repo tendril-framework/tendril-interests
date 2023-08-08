@@ -3,6 +3,7 @@
 from typing import List
 from typing import Dict
 from typing import Union
+from typing import Optional
 
 from inspect import signature
 from makefun import create_function
@@ -21,6 +22,7 @@ from tendril.authn.pydantic import UserReferenceTModel
 from tendril.authz.roles.interests import MembershipInfoTModel
 from tendril.common.states import LifecycleStatus
 from tendril.utils.db import get_session
+from tendril.common.interests.representations import ExportLevel
 
 from .base import ApiRouterGenerator
 
@@ -29,11 +31,11 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
     def __init__(self, actual):
         super(InterestLibraryRouterGenerator, self).__init__()
         self._actual = actual
+        self._item_tmodel = None
 
     async def items(self, request: Request,
                     user: AuthUserModel = auth_spec(),
-                    include_roles: bool = False,
-                    include_permissions: bool = False,
+                    export_level: Optional[ExportLevel] = ExportLevel.STUB,
                     include_inherited: bool = True):
         """
         Get a list of all items in this library.
@@ -49,22 +51,17 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
 
          - **user :** The requesting user, identified by the access token, whose list of
                       interests is to be provided.
-         - **include_roles :** Include the user's roles in the response.
-         - **include_permissions :** Include the user's permissions in the response.
          - **include_inherited : ** Include interests in which the user's access inherited.
         """
         with get_session() as session:
             rv = [x.export(auth_user=user, session=session,
-                           include_roles=include_roles,
-                           include_permissions=include_permissions)
+                           export_level=export_level)
                   for x in self._actual.items(user=user, session=session,
                                               include_inherited=include_inherited,)]
         return rv
 
     async def new_items(self, request: Request,
-                        user: AuthUserModel = auth_spec(),
-                        include_roles: bool = False,
-                        include_permissions: bool = False):
+                        user: AuthUserModel = auth_spec()):
         """
         Get a list of all new items in this library.
 
@@ -81,17 +78,14 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
          - **include_permissions :** Include the user's permissions in the response.
         """
         with get_session() as session:
-            rv = [x.export(session=session,
-                           include_roles=include_roles,
-                           include_permissions=include_permissions)
+            rv = [x.export(session=session, export_level=ExportLevel.STUB)
                   for x in self._actual.items(state=LifecycleStatus.NEW,
                                               session=session)]
         return rv
 
     async def item(self, request: Request, id: int,
                    user: AuthUserModel = auth_spec(),
-                   include_roles: bool = False,
-                   include_permissions: bool = False):
+                   export_level: Optional[ExportLevel] = ExportLevel.NORMAL):
         """
         Get a specific item from this library.
 
@@ -106,18 +100,15 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
 
           - **id :** The id of the interest to retrieve
           - **user :** The requesting user, identified by the access token.
-          - **include_roles :** Include the user's roles in the response.
-          - **include_permissions :** Include the user's permissions in the response.
         """
         with get_session() as session:
             rv = self._actual.item(id=id, session=session).\
-                export(auth_user=user, session=session,
-                       include_roles=include_roles,
-                       include_permissions=include_permissions)
+                export(auth_user=user, session=session, export_level=export_level)
         return rv
 
     async def find_possible_parents(self, request: Request,
-                                    user: AuthUserModel = auth_spec()):
+                                    user: AuthUserModel = auth_spec(),
+                                    export_level: Optional[ExportLevel] = ExportLevel.STUB.value):
         """
         Get possible parents for new items in this library.
 
@@ -129,14 +120,14 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         with get_session() as session:
             result = self._actual.possible_parents(user=user, session=session)
             return [x.export(auth_user=user, session=session,
-                             include_roles=False,
-                             include_permissions=False) for x in result]
+                             export_level=export_level) for x in result]
 
     def _inject_create_model(self, ep):
         return self._inject_model(ep, param='item', model=self._actual.interest_class.tmodel_create)
 
     def create_item(self, item,
-                    user: AuthUserModel = auth_spec()):
+                    user: AuthUserModel = auth_spec(),
+                    export_level: Optional[ExportLevel] = ExportLevel.STUB.value):
         """
         Create an Interest.
 
@@ -159,18 +150,19 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         """
         with get_session() as session:
             item = self._actual.add_item(item, session=session)
-            rv = item.export(session=session)
+            rv = item.export(export_level=export_level, session=session)
         return rv
 
     def _inject_edit_model(self, ep):
         return self._inject_model(ep, param='changes', model=self._actual.interest_class.tmodel_edit)
 
     async def edit_item(self, id:int, changes,
-                        user: AuthUserModel = auth_spec()):
+                        user: AuthUserModel = auth_spec(),
+                        export_level: Optional[ExportLevel] = ExportLevel.NORMAL.value):
         with get_session() as session:
             item = self._actual.item(id, session=session)
             result = item.edit(changes, auth_user=user, session=session)
-            rv = item.export(auth_user=user, session=session)
+            rv = item.export(export_level=export_level, auth_user=user, session=session)
         return rv
 
     async def activate_item(self, request: Request, id: int,
@@ -328,30 +320,26 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         with get_session() as session:
             item = self._actual.item(id, session=session)
             item.assign_role(role=role, user=to_user, auth_user=user, session=session)
-            rv = item.export(auth_user=to_user, session=session,
-                             include_roles=True)
+            # TODO This response is probably much heavier than it should be
+            rv = item.export(auth_user=to_user, session=session, export_level=ExportLevel.DETAILED)
         return rv
 
     async def item_parents(self, request: Request, id: int,
                            user: AuthUserModel = auth_spec(),
-                           exclude_limited: bool = True):
+                           export_level: Optional[ExportLevel] = ExportLevel.STUB):
         kwargs = {}
-        if exclude_limited:
-            kwargs['limited'] = False
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            rv = [x.export(auth_user=user, session=session)
+            rv = [x.export(export_level=export_level, auth_user=user, session=session)
                   for x in item.parents(auth_user=user, **kwargs, session=session)]
         return rv
 
     def item_children(self, request: Request, id: int,
                       user: AuthUserModel = auth_spec(),
                       child_type: str = None,
-                      exclude_limited: bool = True):
+                      export_level: Optional[ExportLevel] = ExportLevel.STUB):
         kwargs = {}
         rv = []
-        if exclude_limited:
-            kwargs['limited'] = False
         if child_type:
             kwargs['child_type'] = child_type
         with get_session() as session:
@@ -368,9 +356,6 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
             return item.add_child(child_id, limited=limited,
                                   auth_user=user, session=session)
 
-    async def update_item(self):
-        raise NotImplementedError
-
     async def delete_item(self):
         raise NotImplementedError
 
@@ -378,24 +363,25 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         desc = f'{name} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
         from tendril import interests
-        parent_models = [interests.type_codes[x].tmodel for x in interests.possible_parents[prefix]]
+        parent_models = [interests.type_codes[x].export_tmodel_stub() for x in interests.possible_parents[prefix]]
 
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
+
         router.add_api_route("", self.items, methods=["GET"],
-                             response_model=List[self._actual.interest_class.tmodel],
+                             response_model=List[self._actual.interest_class.export_tmodel_unified()],
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])],)
 
         if self._actual.enable_creation_api:
             router.add_api_route("/create", self._inject_create_model(self.create_item), methods=['PUT'],
-                                 response_model=self._actual.interest_class.tmodel,
+                                 response_model=self._actual.interest_class.export_tmodel_unified(),
                                  response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
 
         if self._actual.enable_activation_api:
             router.add_api_route("/new", self.new_items, methods=["GET"],
-                                 response_model=List[self._actual.interest_class.tmodel],
+                                 response_model=List[self._actual.interest_class.export_tmodel_unified()],
                                  response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:create'])], )
 
@@ -411,13 +397,13 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])])
 
         router.add_api_route("/{id:int}", self.item, methods=["GET"],
-                             response_model=self._actual.interest_class.tmodel,
+                             response_model=self._actual.interest_class.export_tmodel_unified(),
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
 
         router.add_api_route("/{id:int}/edit", self._inject_edit_model(self.edit_item),
                              methods=["POST"],
-                             response_model=self._actual.interest_class.tmodel,
+                             response_model=self._actual.interest_class.export_tmodel_unified(),
                              response_model_exclude_none=True,
                              dependencies=[auth_spec(scopes=[f'{prefix}:read'])])
 
@@ -433,7 +419,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
 
         if self._actual.enable_membership_edit_api:
             router.add_api_route("/{id:int}/members/{role}/add", self.item_grant_role, methods=["POST"],
-                                 response_model=self._actual.interest_class.tmodel,
+                                 response_model=self._actual.interest_class.export_tmodel_unified(),
                                  response_model_exclude_none=True,
                                  dependencies=[auth_spec(scopes=[f'{prefix}:write'])], )
 
@@ -446,7 +432,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         ac = self._actual.interest_class.model.role_spec.allowed_children
         if '*' in ac:
             ac = interests.type_codes.keys()
-        child_models = [interests.type_codes[x].tmodel for x in ac]
+        child_models = [interests.type_codes[x].export_tmodel_unified() for x in ac]
         if len(child_models):
             router.add_api_route("/{id:int}/children", self.item_children, methods=["GET"],
                                  response_model=List[Union[tuple(child_models)]],
