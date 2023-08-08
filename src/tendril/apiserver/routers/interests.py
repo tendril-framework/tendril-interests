@@ -1,6 +1,7 @@
 
 
 from typing import List
+from typing import Dict
 from typing import Optional
 from fastapi import APIRouter
 from fastapi import Depends
@@ -11,9 +12,11 @@ from tendril.authn.users import AuthUserModel
 
 from tendril.libraries import interests
 from tendril.interests import type_spec
+from tendril.interests import interest_stub_tmodel
 from tendril.common.states import LifecycleStatus
 
 from tendril.db.controllers.interests import get_interest
+from tendril.common.interests.representations import ExportLevel
 from tendril.common.interests.representations import rewrap_interest
 from tendril.common.interests.representations import get_interest_stub
 
@@ -34,17 +37,17 @@ interests_router = APIRouter(prefix='/interests',
                              )
 
 
-@interests_router.get("/libraries")
+@interests_router.get("/libraries", response_model=Dict[str, str])
 async def get_interest_libraries():
-    return {'interest_libraries': interests.defined_types}
+    return interests.libraries_and_types
 
 
 @interests_router.get("/types")
 async def get_interest_types():
-    return {'interest_types': type_spec}
+    return type_spec
 
 
-@interests_router.get("/{id}/stub")
+@interests_router.get("/{id}/stub", response_model=interest_stub_tmodel)
 async def interest_stubs(id: int,
                          user: AuthUserModel = auth_spec()):
     with get_session() as session:
@@ -56,7 +59,7 @@ async def interest_stubs(id: int,
         # interest's perspective for approvals. The stub will have to be
         # treated as public (any logged in user).
         # interest.export(auth_user=user, probe_only=True, session=session)
-        return get_interest_stub(interest)
+        return interest.export(export_level=ExportLevel.STUB, session=session)
 
 
 @interests_router.post("/memberships", response_model=UserMembershipsTModel)
