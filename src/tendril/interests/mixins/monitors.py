@@ -12,14 +12,14 @@ from typing import Optional
 
 from tendril.caching import transit
 from tendril.utils.pydantic import TendrilTBaseModel
-from tendril.utils.types.unitbase import NumericalUnitBase
 from tendril.core.mq.aio import with_mq_client
 
 from tendril.monitors.spec import MonitorSpec
 from tendril.monitors.spec import MonitorExportLevel
 from tendril.monitors.spec import MonitorPublishFrequency
-from tendril.monitors.spec import bool_parser
 from tendril.monitors.spec import DecimalEncoder
+
+from tendril.common.interests.representations import ExportLevel
 
 from .base import InterestMixinBase
 
@@ -250,14 +250,12 @@ class InterestMonitorsMixin(InterestMixinBase):
     def _monitors_at_export_level(self, export_level):
         return [x for x in self.monitors_spec if x.export_level <= export_level]
 
-    def export(self, session=None, auth_user=None, **kwargs):
+    def export(self, export_level=ExportLevel.NORMAL,
+               session=None, auth_user=None, **kwargs):
         rv = {}
         if hasattr(super(), 'export'):
-            rv.update(super().export(session=session, auth_user=auth_user, **kwargs))
-        export_level = MonitorExportLevel.NORMAL
-        monitors = self._monitors_at_export_level(export_level)
-        if not monitors:
-            return rv
+            rv.update(super().export(export_level=export_level, session=session,
+                                     auth_user=auth_user, **kwargs))
         monitor_values = {}
         for monitor_spec in self._monitors_at_export_level(export_level):
             value = self._monitor_get_value(monitor_spec)

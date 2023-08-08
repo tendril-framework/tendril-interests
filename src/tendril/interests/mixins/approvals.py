@@ -18,6 +18,7 @@ from tendril.db.controllers.interests import get_interest
 from tendril.db.controllers.interests_approvals import get_approval
 from tendril.db.controllers.interests_approvals import register_approval
 from tendril.db.controllers.interests_approvals import withdraw_approval
+from tendril.common.interests.representations import ExportLevel
 
 from .base import InterestMixinBase
 
@@ -233,13 +234,13 @@ class InterestApprovalsMixin(InterestMixinBase):
 
     @with_db
     @require_permission('read_approvals', strip_auth=False, required=False)
-    def export(self, session=None, auth_user=None, **kwargs):
-        # TODO Simplify this by moving the {} creation to the
-        #  ABC and removing the hasattr check.
+    def export(self, export_level=ExportLevel.NORMAL,
+               session=None, auth_user=None, **kwargs):
+        rv = {}
         if hasattr(super(), 'export'):
-            rv = super().export(session=session, auth_user=auth_user, **kwargs)
-        else:
-            rv = {}
+            rv.update(super().export(export_level=export_level, session=session,
+                                     auth_user=auth_user, **kwargs))
+
         try:
             self._check_activation_requirements(session=session)
             if next(self.approvals_pending(auth_user=auth_user, session=session), None):
