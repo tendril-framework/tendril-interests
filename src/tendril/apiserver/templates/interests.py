@@ -25,6 +25,8 @@ from tendril.utils.db import get_session
 from tendril.common.interests.representations import ExportLevel
 
 from .base import ApiRouterGenerator
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestLibraryRouterGenerator(ApiRouterGenerator):
