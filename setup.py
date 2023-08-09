@@ -36,6 +36,7 @@ core_dependencies = [
     'makefun',
     'asgiref',
     'tendril-utils-types',
+    'tendril-connector-rabbitmq',
 ]
 
 install_requires = core_dependencies + ['wheel']
