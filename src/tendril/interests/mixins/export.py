@@ -72,8 +72,8 @@ class InterestExportMixin(InterestMixinBase):
         try:
             mro = list(cls.__mro__)
         except AttributeError:
-            print(f"There isn't an __mro__ on {cls}. "
-                  f"This is probably a classic class. We don't support this.")
+            logger.warning(f"There isn't an __mro__ on {cls}. "
+                           f"This is probably a classic class. We don't support this.")
             return cls.additional_tmodel_mixins
         rv = {}
         for parent_cls in mro:
