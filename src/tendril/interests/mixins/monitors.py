@@ -4,7 +4,8 @@ from pprint import pprint
 import time
 import re
 import json
-from decimal import Decimal
+
+from os.path import commonprefix
 from fnmatch import fnmatch
 from typing import List
 from typing import Any
@@ -15,11 +16,9 @@ from tendril.utils.pydantic import TendrilTBaseModel
 from tendril.core.mq.aio import with_mq_client
 
 from tendril.monitors.spec import MonitorSpec
-from tendril.monitors.spec import MonitorExportLevel
 from tendril.monitors.spec import MonitorPublishFrequency
 from tendril.monitors.spec import DecimalEncoder
 from tendril.utils.types.unitbase import UnitBase
-from tendril.utils.types.time import TimeSpan
 from tendril.common.interests.representations import ExportLevel
 
 from .base import InterestMixinBase
@@ -119,6 +118,8 @@ class InterestMonitorsMixin(InterestMixinBase):
         if spec.keep_hot:
             # Publish to cache
             kwargs = self._monitor_get_cache_loc(spec)
+            if name:
+                kwargs['key'] = name
             kwargs.update({'ttl': spec.expire, 'ser': spec.get_serializer(), 'get': True})
 
             # TODO Replace with async when tendril-caching allows it
@@ -248,8 +249,31 @@ class InterestMonitorsMixin(InterestMixinBase):
             value = spec.default
         return value
 
+    def _monitor_get_multiple_value(self, spec):
+        # TODO Redis keys search is dangerous. An alternate method is required.
+        #   Maybe use influxdb tags instead, or maybe refactor to use a hash instead.
+        namespace = f'im:{self.id}'
+        keys = transit.find_keys(namespace=namespace, pattern=spec.path)
+        values = {}
+        for key in keys:
+            key = key.decode().removeprefix(namespace + ':')
+            name = spec.path.removeprefix(namespace)
+            prefix = commonprefix([key, name])
+            key = key.removeprefix(prefix)
+            if not key:
+                continue
+            values[key] = transit.read(namespace, prefix + key)
+        return values
+
     def _monitors_at_export_level(self, export_level):
         return [x for x in self.monitors_spec if x.export_level <= export_level]
+
+    def _monitor_export_process(self, value, spec):
+        if spec.export_processor:
+            value = spec.export_processor(value)
+        elif isinstance(value, UnitBase):
+            value = str(value)
+        return value
 
     def export(self, export_level=ExportLevel.NORMAL,
                session=None, auth_user=None, **kwargs):
@@ -259,13 +283,26 @@ class InterestMonitorsMixin(InterestMixinBase):
                                      auth_user=auth_user, **kwargs))
         monitor_values = {}
         for monitor_spec in self._monitors_at_export_level(export_level):
-            value = self._monitor_get_value(monitor_spec)
-            if value is None:
-                continue
-            if monitor_spec.export_processor:
-                value = monitor_spec.export_processor(value)
-            elif isinstance(value, UnitBase):
-                value = str(value)
-            monitor_values[monitor_spec.publish_name()] = value
+            if monitor_spec.multiple_container:
+                value = self._monitor_get_multiple_value(monitor_spec)
+                if not value:
+                    continue
+                if monitor_spec.multiple_container != dict:
+                    raise NotImplementedError(f"We only support flat dict type multiple containers. "
+                                              f"Got {monitor_spec.multiple_container}")
+                for key, val in value.items():
+                    value[key] = self._monitor_export_process(value[key], monitor_spec)
+                # TODO This will break if the * is elsewhere or if there are multiple
+                name = monitor_spec.publish_name().\
+                    replace('*', '').\
+                    replace('..', '.').\
+                    strip('.')
+                monitor_values[name] = value
+            else:
+                value = self._monitor_get_value(monitor_spec)
+                if value is None:
+                    continue
+                value = self._monitor_export_process(value, monitor_spec)
+                monitor_values[monitor_spec.publish_name()] = value
         rv['monitors'] = monitor_values
         return rv
