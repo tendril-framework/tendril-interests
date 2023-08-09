@@ -50,7 +50,7 @@ class DecimalEncoder(json.JSONEncoder):
         if isinstance(obj, NumericalUnitBase):
             obj = obj.value
         if isinstance(obj, Decimal):
-            return f'{obj.normalize():f}'  # using normalize() gets rid of trailing 0s, using ':f' prevents scientific notation
+            return f'{obj:f}'  # using normalize() gets rid of trailing 0s, using ':f' prevents scientific notation
         return super().encode(obj)
 
 
