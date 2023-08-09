@@ -50,6 +50,10 @@ class InterestLocalizersMixin(InterestMixinBase):
             self._localizers = self.localizers(session=session)
         return self._localizers
 
+    @with_db
+    def compacted_localizers(self, session=None):
+        return set([v['id'] for k, v in self.cached_localizers(session=session).items()])
+
     def export(self, export_level=ExportLevel.NORMAL, session=None, auth_user=None, **kwargs):
         rv = {}
         if hasattr(super(), 'export'):
