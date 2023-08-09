@@ -10,6 +10,8 @@ from tendril.utils.pydantic import TendrilTBaseModel
 from .base import InterestMixinBase
 from tendril.utils.db import with_db
 from tendril.common.interests.representations import ExportLevel
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 # TODO Use the interest stub model here.
@@ -40,7 +42,7 @@ class InterestLocalizersMixin(InterestMixinBase):
                     rv[candidate.type_name] = stub
                     continue
                 idx = 1
-                while f'{candidate.type_name}-{idx}' not in rv.keys():
+                while f'{candidate.type_name}-{idx}' in rv.keys():
                     idx += 1
                 rv[f'{candidate.type_name}-{idx}'] = stub
         return rv

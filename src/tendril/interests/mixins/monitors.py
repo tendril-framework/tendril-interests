@@ -22,6 +22,8 @@ from tendril.utils.types.unitbase import UnitBase
 from tendril.common.interests.representations import ExportLevel
 
 from .base import InterestMixinBase
+from tendril.utils import log
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 idx_rex = re.compile(r"^(?P<key>\S+)\[(?P<idx>\d+)\]")
