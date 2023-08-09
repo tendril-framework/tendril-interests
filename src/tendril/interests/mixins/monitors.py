@@ -18,7 +18,8 @@ from tendril.monitors.spec import MonitorSpec
 from tendril.monitors.spec import MonitorExportLevel
 from tendril.monitors.spec import MonitorPublishFrequency
 from tendril.monitors.spec import DecimalEncoder
-
+from tendril.utils.types.unitbase import UnitBase
+from tendril.utils.types.time import TimeSpan
 from tendril.common.interests.representations import ExportLevel
 
 from .base import InterestMixinBase
@@ -263,6 +264,8 @@ class InterestMonitorsMixin(InterestMixinBase):
                 continue
             if monitor_spec.export_processor:
                 value = monitor_spec.export_processor(value)
+            elif isinstance(value, UnitBase):
+                value = str(value)
             monitor_values[monitor_spec.publish_name()] = value
         rv['monitors'] = monitor_values
         return rv
