@@ -15,7 +15,7 @@ from tendril.authz.roles.interests import require_permission
 from .base import InterestMixinBase
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__, log.DEBUG)
 
 
 class InterestIdOnlyTModel(TendrilTBaseModel):
@@ -134,21 +134,24 @@ class InterestExportMixin(InterestMixinBase):
 
     @classmethod
     def export_tmodel_stub(cls):
-        if not hasattr(cls, '_tmodel_stub'):
-            cls._tmodel_stub = cls.tmodel_build(ExportLevel.STUB)
-        return cls._tmodel_stub
+        # if not hasattr(cls, '_tmodel_stub') or not cls._tmodel_stub:
+        #     cls._tmodel_stub = cls.tmodel_build(ExportLevel.STUB)
+        # return cls._tmodel_stub
+        return cls.tmodel_build(ExportLevel.STUB)
 
     @classmethod
     def export_tmodel_normal(cls):
-        if not hasattr(cls, '_tmodel_normal'):
-            cls._tmodel_normal = cls.tmodel_build(ExportLevel.NORMAL)
-        return cls._tmodel_normal
+        # if not hasattr(cls, '_tmodel_normal') or not cls._tmodel_normal:
+        #     cls._tmodel_normal = cls.tmodel_build(ExportLevel.NORMAL)
+        # return cls._tmodel_normal
+        return cls.tmodel_build(ExportLevel.NORMAL)
 
     @classmethod
     def export_tmodel_detailed(cls):
-        if not hasattr(cls, '_tmodel_detailed'):
-            cls._tmodel_detailed = cls.tmodel_build(ExportLevel.DETAILED)
-        return cls._tmodel_detailed
+        # if not hasattr(cls, '_tmodel_detailed') or not cls._tmodel_detailed:
+        #     cls._tmodel_detailed = cls.tmodel_build(ExportLevel.DETAILED)
+        # return cls._tmodel_detailed
+        return cls.tmodel_build(ExportLevel.DETAILED)
 
     @classmethod
     def export_tmodel_unified(cls):
