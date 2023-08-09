@@ -71,8 +71,14 @@ class InterestMonitorsMixin(InterestMixinBase):
         if not name:
             name = spec.publish_name()
         bucket = 'im'
-        tags = {'device_id': str(self.id),
-                'device': str(self.name)}
+
+        tags = {}
+
+        if hasattr(self, 'cached_localizers'):
+            localizers = {k: v['name'] for k, v in self.cached_localizers().items()}
+            tags.update(localizers)
+        tags[self.type_name] = str(self.name)
+
         if isinstance(spec.publish_measurement, str):
             measurement = spec.publish_measurement
         else:
