@@ -35,6 +35,7 @@ from tendril.utils.versions import get_namespace_package_names
 from tendril.db.controllers.interests import register_interest_role
 from tendril.db.controllers.interests_approvals import register_approval_type
 from tendril.authz.approvals.interests import ApprovalRequirement
+from tendril.common.interests.representations import ExportLevel
 
 from tendril.utils import log
 logger = log.get_logger(__name__, log.DEBUG)
@@ -53,6 +54,7 @@ class InterestManager(object):
         self._approval_types = {}
         self.all_actions = {}
         self._roles = {}
+        self._tmodels = {}
         self._docs = []
         self._load_interests()
 
@@ -71,6 +73,18 @@ class InterestManager(object):
     def register_interest_type(self, name, interest, doc=None):
         logger.info(f"Registering <{interest.__name__}> to handle Interest type '{name}'")
         self._types[name] = interest
+        interest._tmodel_idonly = interest.tmodel_build(ExportLevel.ID_ONLY)
+        interest._tmodel_stub = interest.tmodel_build(ExportLevel.STUB)
+        interest._tmodel_normal = interest.tmodel_build(ExportLevel.NORMAL)
+        interest._tmodel_detailed = interest.tmodel_build(ExportLevel.DETAILED)
+        interest._tmodel_unified = Union[
+                interest.export_tmodel_detailed(),
+                interest.export_tmodel_normal(),
+                interest.export_tmodel_stub(),
+                interest._tmodel_idonly
+        ]
+        self._tmodels[name] = [interest._tmodel_detailed, interest._tmodel_normal,
+                               interest._tmodel_stub, interest._tmodel_idonly]
         self._docs.append((name, doc))
 
     def register_interest_role(self, name, doc=None):
