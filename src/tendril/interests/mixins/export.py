@@ -135,23 +135,23 @@ class InterestExportMixin(InterestMixinBase):
     @classmethod
     def export_tmodel_stub(cls):
         # if not hasattr(cls, '_tmodel_stub') or not cls._tmodel_stub:
-        #     cls._tmodel_stub = cls.tmodel_build(ExportLevel.STUB)
+        cls._tmodel_stub = cls.tmodel_build(ExportLevel.STUB)
         # return cls._tmodel_stub
-        return cls.tmodel_build(ExportLevel.STUB)
+        return cls.tmodel_stub
 
     @classmethod
     def export_tmodel_normal(cls):
         # if not hasattr(cls, '_tmodel_normal') or not cls._tmodel_normal:
-        #     cls._tmodel_normal = cls.tmodel_build(ExportLevel.NORMAL)
+        cls._tmodel_normal = cls.tmodel_build(ExportLevel.NORMAL)
         # return cls._tmodel_normal
-        return cls.tmodel_build(ExportLevel.NORMAL)
+        return cls.tmodel_normal
 
     @classmethod
     def export_tmodel_detailed(cls):
         # if not hasattr(cls, '_tmodel_detailed') or not cls._tmodel_detailed:
-        #     cls._tmodel_detailed = cls.tmodel_build(ExportLevel.DETAILED)
+        cls._tmodel_detailed = cls.tmodel_build(ExportLevel.DETAILED)
         # return cls._tmodel_detailed
-        return cls.tmodel_build(ExportLevel.DETAILED)
+        return cls.tmodel_detailed
 
     @classmethod
     def export_tmodel_unified(cls):
