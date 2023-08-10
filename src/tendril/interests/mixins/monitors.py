@@ -47,15 +47,6 @@ class InterestMonitorsMixin(InterestMixinBase):
             if fnmatch(monitor, spec.publish_name()):
                 return spec
 
-    # def monitors_print(self):
-    #     pprint(self.monitors)
-    #     for spec in self.monitors_spec:
-    #         try:
-    #             print(spec.publish_name(), spec.hot_cache_key(self.id), self.monitors[spec.publish_name()])
-    #         except KeyError:
-    #             # print(f"err {spec.publish_name()}")
-    #             pass
-
     def _monitor_get_cache_loc(self, spec):
         return {
             'namespace': f'im:{self.id}',
@@ -65,9 +56,6 @@ class InterestMonitorsMixin(InterestMixinBase):
     @with_mq_client
     async def monitor_publish(self, spec: MonitorSpec, value,
                               name=None, timestamp=None, mq=None):
-        # TODO
-        #  - This is all very fragile.
-        #  - Move big chucks of this into some influxdb connector.
         if not timestamp:
             timestamp = time.clock_gettime_ns(time.CLOCK_REALTIME)
         if not name:
@@ -106,20 +94,6 @@ class InterestMonitorsMixin(InterestMixinBase):
 
         key = f'{bucket}.{self.type_name}.{measurement}'
         await mq.publish(key, msg)
-        print('SENT', key, msg)
-        # line_protocol_tags = ','.join(f'{x}={y}' for x, y in tags.items())
-        # line_protocol_b1_parts = [measurement, line_protocol_tags]
-        # line_protocol_b1 = ','.join(line_protocol_b1_parts)
-        #
-        # line_protocol_values = ','.join(f'{x}={y}' for x, y in fields.items())
-        #
-        # line_protocol_b2 = line_protocol_values
-        # line_protocol_b3 = str(timestamp)
-        #
-        # line_protocol_parts = [line_protocol_b1, line_protocol_b2, line_protocol_b3]
-        # line_protocol = ' '.join(line_protocol_parts)
-        # print(name, 'LP', line_protocol)
-        # mq.publish(key, value)
 
     async def monitor_write(self, spec: MonitorSpec, value,
                             name=None, timestamp=None):

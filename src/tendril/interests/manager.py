@@ -38,7 +38,7 @@ from tendril.authz.approvals.interests import ApprovalRequirement
 from tendril.common.interests.representations import ExportLevel
 
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEBUG)
+logger = log.get_logger(__name__, log.DEFAULT)
 
 
 class InterestManager(object):
