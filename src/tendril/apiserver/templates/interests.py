@@ -4,9 +4,8 @@ from typing import List
 from typing import Dict
 from typing import Union
 from typing import Optional
-
-from inspect import signature
-from makefun import create_function
+from inflection import singularize
+from inflection import titleize
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -362,7 +361,7 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         raise NotImplementedError
 
     def generate(self, name):
-        desc = f'{name} Interest API'
+        desc = f'{titleize(singularize(name))} Interest API'
         prefix = self._actual.interest_class.model.role_spec.prefix
         from tendril import interests
         parent_models = [interests.type_codes[x].export_tmodel_stub() for x in interests.possible_parents[prefix]]

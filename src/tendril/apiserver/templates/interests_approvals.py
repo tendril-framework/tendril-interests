@@ -2,6 +2,8 @@
 
 from typing import List
 from typing import Optional
+from inflection import singularize
+from inflection import titleize
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -52,7 +54,7 @@ class InterestApprovalRouterGenerator(ApiRouterGenerator):
                 return {'subject': id, 'contexts': []}
 
     def generate(self, name):
-        desc = f'Approvals API for {name} Interests'
+        desc = f'Approvals API for {titleize(singularize(name))} Interests'
         prefix = self._actual.interest_class.model.role_spec.prefix
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])
@@ -121,7 +123,7 @@ class InterestApprovalContextRouterGenerator(ApiRouterGenerator):
             return context.approval_withdraw(subject_id, approval_type, auth_user=user, session=session)
 
     def generate(self, name):
-        desc = f'Approval Context API for {name} Interests'
+        desc = f'Approval Context API for {titleize(singularize(name))} Interests'
         prefix = self._actual.interest_class.model.role_spec.prefix
         router = APIRouter(prefix=f'/{name}', tags=[desc],
                            dependencies=[Depends(authn_dependency)])

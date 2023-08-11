@@ -1,11 +1,10 @@
 
 
-import re
 from typing import List
-from typing import Union
 from typing import Optional
 from pydantic import Field
 from pydantic import create_model
+from inflection import camelize
 
 from tendril.utils.pydantic import TendrilTBaseModel
 from tendril.common.states import LifecycleStatus
@@ -36,11 +35,6 @@ class InterestBaseNormalTModel(InterestBaseStubTModel):
 class InterestBaseDetailedTModel(InterestBaseNormalTModel):
     roles: Optional[List[str]]
     permissions: Optional[List[str]]
-
-
-def camel_case(s):
-    s = re.sub(r"(_|-)+", " ", s).title().replace(" ", "")
-    return ''.join([s[0].lower(), s[1:]])
 
 
 _base_tmodels = {
@@ -123,7 +117,7 @@ class InterestExportMixin(InterestMixinBase):
         base_tmodel = _base_tmodels[export_level]
         additional_fields = cls._extract_additional_field_tmodels(export_level)
         additional_mixins = cls.tmodel_mixins_at_level(export_level)
-        type_name = f'{camel_case(cls.model.type_name)}{base_tmodel[1]}TModel'
+        type_name = f'{camelize(cls.model.type_name)}{base_tmodel[1]}TModel'
         logger.debug(f"Building TModel {type_name}")
         return create_model(
             type_name,

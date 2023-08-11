@@ -35,6 +35,7 @@ core_dependencies = [
     'polars',
     'makefun',
     'asgiref',
+    'inflection',
     'tendril-utils-types',
     'tendril-connector-rabbitmq',
 ]

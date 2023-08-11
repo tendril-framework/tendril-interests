@@ -232,8 +232,6 @@ class InterestMonitorsMixin(InterestMixinBase):
         return value
 
     def _monitor_get_multiple_value(self, spec):
-        # TODO Redis keys search is dangerous. An alternate method is required.
-        #   Maybe use influxdb tags instead, or maybe refactor to use a hash instead.
         namespace = f'im:{self.id}'
         keys = transit.find_keys(namespace=namespace, pattern=spec.path)
         values = {}
