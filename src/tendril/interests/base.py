@@ -78,6 +78,10 @@ class InterestBase(InterestExportMixin):
             if must_create:
                 raise AttributeError("Expected a name, not an object")
             self._model_instance = name
+        elif isinstance(name, self.__class__):
+            logger.warning(f"Got a wrapped interest class for {self.__class__}. "
+                           f"Caller should have just used that instead of hitting here!")
+            self._model_instance = name.model_instance
         else:
             self._name = name
             self._info = info or {}
