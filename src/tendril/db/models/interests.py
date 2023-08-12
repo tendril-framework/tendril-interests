@@ -7,6 +7,7 @@ from sqlalchemy import Boolean
 from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 from sqlalchemy import UniqueConstraint
+from sqlalchemy.orm import deferred
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import mapped_column
 from sqlalchemy_json import mutable_json_type
@@ -43,7 +44,7 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
 
     status = Column(Enum(LifecycleStatus), nullable=False,
                     default=LifecycleStatus.NEW)
-    info = Column(mutable_json_type(dbtype=JSONB))
+    info = deferred(Column(mutable_json_type(dbtype=JSONB)))
 
     @property
     def actual(self):

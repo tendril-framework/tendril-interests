@@ -36,6 +36,7 @@ core_dependencies = [
     'makefun',
     'asgiref',
     'inflection',
+    'deepdiff[optimize]',
     'tendril-utils-types',
     'tendril-connector-rabbitmq',
 ]

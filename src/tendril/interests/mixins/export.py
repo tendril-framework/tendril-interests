@@ -29,10 +29,11 @@ class InterestBaseStubTModel(InterestIdOnlyTModel):
 
 
 class InterestBaseNormalTModel(InterestBaseStubTModel):
-    info: Optional[dict]
+    pass
 
 
 class InterestBaseDetailedTModel(InterestBaseNormalTModel):
+    info: Optional[dict]
     roles: Optional[List[str]]
     permissions: Optional[List[str]]
 

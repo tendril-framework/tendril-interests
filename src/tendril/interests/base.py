@@ -1,9 +1,12 @@
 
 
+from copy import deepcopy
+from pprint import pformat
 from typing import Optional
 from typing import Literal
 from functools import cached_property
 from pydantic import Field
+from deepdiff import DeepDiff
 
 from tendril.utils.pydantic import TendrilTBaseModel
 
@@ -124,6 +127,35 @@ class InterestBase(InterestExportMixin):
             return self._info
         else:
             return self._model_instance.info
+
+    @with_db
+    def replace_info(self, info, section=None, context=None,
+                     ignore_changes=None, session=None):
+        session.add(self._model_instance)
+        logger.info(f"GOT INFO for {self.id}")
+        old_info = self.info
+        if section:
+            new_info = deepcopy(old_info)
+            new_info[section] = info
+        else:
+            new_info = info
+
+        info_diff = DeepDiff(old_info, new_info,
+                             cache_purge_level=0,
+                             exclude_paths=ignore_changes,
+                             ignore_string_type_changes=True,
+                             ignore_numeric_type_changes=True,
+                             verbose_level=2)
+
+        if info_diff:
+            logger.info(f"Change in info for {self.type_name} {self.id} {self.name}:")
+            logger.debug(f"diff :\n{pformat(info_diff, depth=2)}")
+            diff_msg = info_diff.to_json()
+            # TODO Publish this to the interest log.
+            self._model_instance.info = new_info
+        else:
+            logger.debug(f"Got identical information for {self.type_name} {self.id} {self.name}, "
+                         f"not writing.")
 
     @property
     def id(self):
