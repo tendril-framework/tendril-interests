@@ -159,15 +159,15 @@ class InterestExportMixin(InterestMixinBase):
             })
 
         if export_level >= ExportLevel.NORMAL:
-            rv.update({'info': self.info})
-
             for field in self.additional_fields + self.additional_export_fields:
                 if isinstance(field, tuple):
                     field = field[0]
                 rv[field] = getattr(self, field)
 
         if export_level >= ExportLevel.DETAILED:
-            # TODO maybe move this into the base class along with the other auth stuff
+            rv.update({'info': self.info})
+            # TODO maybe move this into the base class along with the other auth stuff for
+            #  a later AuthMixin
             user_roles = self.get_user_effective_roles(auth_user, session=session)
             rv['roles'] = sorted(user_roles)
             rv['permissions'] = sorted(self.model.role_spec.get_roles_permissions(user_roles))
