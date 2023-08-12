@@ -474,6 +474,8 @@ class InterestBase(InterestExportMixin):
         if self._descriptive_name:
             kwargs['descriptive_name'] = self._descriptive_name
         for field in self.additional_fields:
+            if isinstance(field, tuple):
+                field = field[0]
             kwargs[field] = getattr(self, field)
         if self._model_instance:
             kwargs['id'] = self.id
