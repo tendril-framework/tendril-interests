@@ -80,7 +80,9 @@ class InterestMonitorsMixin(InterestMixinBase):
             if len(parts) == 1:
                 tags['identifier'] = parts[0]
             if len(parts) > 1:
-                raise ValueError("Don't know how to construct an influxdb string")
+                logger.error(f"Don't know how to construct an influxdb "
+                             f"string from parts {parts}")
+                return
 
         # We don't use the usual serializers here. Instead, we rely on the DecimalEncoder
         # This is another significant source of fragility and may need to be improved.
