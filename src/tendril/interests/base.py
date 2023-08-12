@@ -132,7 +132,7 @@ class InterestBase(InterestExportMixin):
     def replace_info(self, info, section=None, context=None,
                      ignore_changes=None, session=None):
         session.add(self._model_instance)
-        logger.info(f"GOT INFO for {self.id}")
+        logger.info(f"Got info for <{self.type_name} {self.id} {self.name}>")
         old_info = self.info
         if section:
             new_info = deepcopy(old_info)
@@ -148,14 +148,15 @@ class InterestBase(InterestExportMixin):
                              verbose_level=2)
 
         if info_diff:
-            logger.info(f"Change in info for {self.type_name} {self.id} {self.name}:")
-            logger.debug(f"diff :\n{pformat(info_diff, depth=2)}")
+            logger.info(f"Change in info for <{self.type_name} {self.id} {self.name}>. Updating.")
+            logger.debug(f"info diff for <{self.type_name} {self.id} {self.name}> :"
+                         f"\n{pformat(info_diff, depth=2)}")
             diff_msg = info_diff.to_json()
             # TODO Publish this to the interest log.
             self._model_instance.info = new_info
         else:
             logger.debug(f"Got identical information for {self.type_name} {self.id} {self.name}, "
-                         f"not writing.")
+                         f"not updating.")
 
     @property
     def id(self):
