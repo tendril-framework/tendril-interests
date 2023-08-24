@@ -18,6 +18,8 @@ class ApiRouterGenerator(object):
         new_sig = orig_sig.replace(parameters=params)
         return create_function(func_signature=new_sig, func_impl=ep)
 
+    async def placeholder(self):
+        pass
 
     def generate(self, prefix):
         raise NotImplementedError
