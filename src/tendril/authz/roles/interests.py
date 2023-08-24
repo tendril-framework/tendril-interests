@@ -293,7 +293,7 @@ def _check_predicate(predicate, self, kwargs):
     # cause significant long term headaches. An alternative pathway
     # to manage exceptions is probably needed.
     attr, value = predicate
-    if value.startswith('self'):
+    if hasattr(value, 'startswith') and value.startswith('self'):
         parts = value.split('.')
         value = self
         for part in parts[1:]:
