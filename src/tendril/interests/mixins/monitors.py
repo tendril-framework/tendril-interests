@@ -1,25 +1,36 @@
 
 
-from pprint import pprint
 import time
 import re
 import json
+from pprint import pprint
 
 from os.path import commonprefix
 from fnmatch import fnmatch
 from typing import List
 from typing import Any
 from typing import Optional
+from typing import Union
 
 from tendril.caching import transit
-from tendril.utils.pydantic import TendrilTBaseModel
+from tendril.core.tsdb.query.models import QueryTimeSpanTModel
+from tendril.core.tsdb.query.models import TimeSeriesQueryItemTModel
+from tendril.core.tsdb.query.planner import TimeSeriesQueryPlanner
+from tendril.core.tsdb.constants import TimeSeriesExporter
 from tendril.core.mq.aio import with_mq_client
+from tendril.core.tsdb.aio import tsdb_execute_query_plan
 
 from tendril.monitors.spec import MonitorSpec
 from tendril.monitors.spec import MonitorPublishFrequency
 from tendril.monitors.spec import DecimalEncoder
+
+from tendril.utils.pydantic import TendrilTBaseModel
 from tendril.utils.types.unitbase import UnitBase
 from tendril.common.interests.representations import ExportLevel
+from tendril.authz.roles.interests import require_permission
+
+from tendril.config import INFLUXDB_MONITORS_BUCKET
+from tendril.config import INFLUXDB_MONITORS_TOKEN
 
 from .base import InterestMixinBase
 from tendril.utils import log
@@ -27,6 +38,16 @@ logger = log.get_logger(__name__, log.DEFAULT)
 
 
 idx_rex = re.compile(r"^(?P<key>\S+)\[(?P<idx>\d+)\]")
+
+
+class MonitorQueryItemTModel(TendrilTBaseModel):
+    name: str
+    exporter: TimeSeriesExporter
+
+
+class MonitorsQueryTModel(TendrilTBaseModel):
+    time_span: QueryTimeSpanTModel = QueryTimeSpanTModel()
+    monitors: Optional[List[Union[str, MonitorQueryItemTModel]]]
 
 
 class InterestBaseMonitorsTMixin(TendrilTBaseModel):
@@ -42,7 +63,7 @@ class InterestMonitorsMixin(InterestMixinBase):
             self._monitors = {}
         return self._monitors
 
-    def monitor_get_spec(self, monitor):
+    def monitor_get_spec(self, monitor) -> MonitorSpec:
         for spec in self.monitors_spec:
             if fnmatch(monitor, spec.publish_name()):
                 return spec
@@ -53,6 +74,27 @@ class InterestMonitorsMixin(InterestMixinBase):
             'key': spec.publish_name()
         }
 
+    def _monitor_get_publish_loc(self, spec, name=None, for_read=False):
+        tags = {}
+        if not for_read:
+            if hasattr(self, 'cached_localizers'):
+                localizers = {k: v['name'] for k, v in self.cached_localizers().items()}
+                tags.update(localizers)
+        tags[self.type_name] = str(self.name)
+
+        measurement = spec.measurement_name(name)
+        if measurement != name:
+            parts = name.split('.')
+            if measurement in parts:
+                parts.remove(measurement)
+            if len(parts) == 1:
+                tags['identifier'] = parts[0]
+            if len(parts) > 1:
+                raise ValueError(f"Don't know how to construct an influxdb "
+                                 f"string from parts {parts}")
+
+        return measurement, tags
+
     @with_mq_client
     async def monitor_publish(self, spec: MonitorSpec, value,
                               name=None, timestamp=None, mq=None):
@@ -62,27 +104,7 @@ class InterestMonitorsMixin(InterestMixinBase):
             name = spec.publish_name()
         bucket = 'im'
 
-        tags = {}
-
-        if hasattr(self, 'cached_localizers'):
-            localizers = {k: v['name'] for k, v in self.cached_localizers().items()}
-            tags.update(localizers)
-        tags[self.type_name] = str(self.name)
-
-        if isinstance(spec.publish_measurement, str):
-            measurement = spec.publish_measurement
-        else:
-            measurement = spec.publish_measurement(name)
-        if measurement != name:
-            parts = name.split('.')
-            if measurement in parts:
-                parts.remove(measurement)
-            if len(parts) == 1:
-                tags['identifier'] = parts[0]
-            if len(parts) > 1:
-                logger.error(f"Don't know how to construct an influxdb "
-                             f"string from parts {parts}")
-                return
+        measurement, tags = self._monitor_get_publish_loc(spec, name)
 
         # We don't use the usual serializers here. Instead, we rely on the DecimalEncoder
         # This is another significant source of fragility and may need to be improved.
@@ -233,17 +255,29 @@ class InterestMonitorsMixin(InterestMixinBase):
             value = spec.default
         return value
 
-    def _monitor_get_multiple_value(self, spec):
+    def _monitor_get_dynamic_keys(self, spec):
         namespace = f'im:{self.id}'
-        keys = transit.find_keys(namespace=namespace, pattern=spec.path)
-        values = {}
-        for key in keys:
-            key = key.decode().removeprefix(namespace + ':')
+        cache_keys = transit.find_keys(namespace=namespace, pattern=spec.path)
+        keys = []
+        for cache_key in cache_keys:
+            if b'*' in cache_key:
+                continue
+            key = cache_key.decode().removeprefix(namespace + ':')
             name = spec.path.removeprefix(namespace)
             prefix = commonprefix([key, name])
             key = key.removeprefix(prefix)
             if not key:
                 continue
+            keys.append(key)
+        return prefix, keys
+
+    def _monitor_get_multiple_value(self, spec):
+        # namespace = f'im:{self.id}'
+        # keys = transit.find_keys(namespace=namespace, pattern=spec.path)
+        namespace = f'im:{self.id}'
+        values = {}
+        prefix, keys = self._monitor_get_dynamic_keys(spec)
+        for key in keys:
             values[key] = transit.read(namespace, prefix + key)
         return values
 
@@ -257,12 +291,10 @@ class InterestMonitorsMixin(InterestMixinBase):
             value = str(value)
         return value
 
-    def export(self, export_level=ExportLevel.NORMAL,
-               session=None, auth_user=None, **kwargs):
-        rv = {}
-        if hasattr(super(), 'export'):
-            rv.update(super().export(export_level=export_level, session=session,
-                                     auth_user=auth_user, **kwargs))
+    @require_permission('read', strip_auth=False, required=False,
+                        exceptions=[(('export_level', ExportLevel.STUB),)])
+    def monitors_export(self, export_level=ExportLevel.EVERYTHING,
+                        auth_user=None, session=None):
         monitor_values = {}
         for monitor_spec in self._monitors_at_export_level(export_level):
             if monitor_spec.multiple_container:
@@ -275,9 +307,9 @@ class InterestMonitorsMixin(InterestMixinBase):
                 for key, val in value.items():
                     value[key] = self._monitor_export_process(value[key], monitor_spec)
                 # TODO This will break if the * is elsewhere or if there are multiple
-                name = monitor_spec.publish_name().\
-                    replace('*', '').\
-                    replace('..', '.').\
+                name = monitor_spec.publish_name(). \
+                    replace('*', ''). \
+                    replace('..', '.'). \
                     strip('.')
                 monitor_values[name] = value
             else:
@@ -286,5 +318,85 @@ class InterestMonitorsMixin(InterestMixinBase):
                     continue
                 value = self._monitor_export_process(value, monitor_spec)
                 monitor_values[monitor_spec.publish_name()] = value
-        rv['monitors'] = monitor_values
+        return monitor_values
+
+    def export(self, export_level=ExportLevel.NORMAL,
+               session=None, auth_user=None, **kwargs):
+        rv = {}
+        if hasattr(super(), 'export'):
+            rv.update(super().export(export_level=export_level, session=session,
+                                     auth_user=auth_user, **kwargs))
+        monitors = self.monitors_export(export_level=export_level,
+                                        auth_user=auth_user, session=session)
+        if monitors:
+            rv['monitors'] = monitors
+        return rv
+
+    @require_permission('read', strip_auth=False, required=False)
+    def monitors_spec_render(self, auth_user=None, session=None):
+        specs = [x.render() for x in self.monitors_spec]
+        for spec in specs:
+            if spec['is_dynamic_container']:
+                _, spec['known_keys'] = self._monitor_get_dynamic_keys(
+                    self.monitor_get_spec(spec['publish_name'])
+                )
+        return specs
+
+    def _monitor_get_query(self, name,
+                           spec:MonitorSpec,
+                           time_span:QueryTimeSpanTModel,
+                           exporter: TimeSeriesExporter):
+        measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
+
+        fields = ['value']
+        query = TimeSeriesQueryItemTModel(
+            domain='monitors',
+            export_name=name,
+            time_span=time_span,
+            measurement=measurement,
+            tags=tags,
+            fields=fields,
+            exporter=exporter,
+        )
+        return query
+
+    @require_permission('read', strip_auth=False, required=False)
+    async def monitors_export_historical(self, query: MonitorsQueryTModel,
+                                         auth_user=None, session=None):
+        rv = {}
+        rv['time_span'] = query.time_span
+        exportable = []
+        if not query.monitors:
+            monitors = [x.publish_name() for x in self.monitors_spec
+                        if x.publish_frequency > MonitorPublishFrequency.NEVER]
+        else:
+            monitors = query.monitors
+        for target in monitors:
+            if isinstance(target, MonitorQueryItemTModel):
+                exporter = target.export_processor
+                target = target.name
+            else:
+                exporter = None
+            spec = self.monitor_get_spec(target)
+            if exporter:
+                # TODO Check if it actually allows, clear if not
+                pass
+            if not exporter:
+                exporter = spec.get_preferred_exporter()
+            if spec.multiple_container and '*' in target:
+                prefix, keys = self._monitor_get_dynamic_keys(spec)
+                for key in keys:
+                    exportable.append({'name': f"{prefix}{key}",
+                                       'spec': spec,
+                                       'exporter': exporter})
+            else:
+                exportable.append({'name': target, 'spec': spec,
+                                   'exporter': exporter})
+
+        query_planner = TimeSeriesQueryPlanner()
+        for item in exportable:
+            query_planner.add_item(self._monitor_get_query(item['name'], item['spec'], query.time_span, item['exporter']))
+
+        data = await tsdb_execute_query_plan(query_planner)
+        rv['data'] = data['monitors']
         return rv

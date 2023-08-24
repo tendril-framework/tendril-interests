@@ -39,6 +39,7 @@ core_dependencies = [
     'deepdiff[optimize]',
     'tendril-utils-types',
     'tendril-connector-rabbitmq',
+    'tendril-connector-influxdb',
 ]
 
 install_requires = core_dependencies + ['wheel']

@@ -2,8 +2,9 @@
 
 import json
 from collections.abc import Mapping, Iterable
+from numbers import Number
 from decimal import Decimal
-
+from inspect import isclass
 from enum import IntEnum
 from typing import Any
 from typing import Type
@@ -13,8 +14,13 @@ from typing import NamedTuple
 from typing import Optional
 from typing import Union
 
+from tendril.core.tsdb.constants import TimeSeriesFundamentalType
+from tendril.core.tsdb.constants import TimeSeriesExporter
 from tendril.utils.types.unitbase import NumericalUnitBase
 from tendril.utils.types.unitbase import UnitBase
+from tendril.utils import log
+
+logger = log.get_logger(__name__, log.DEFAULT)
 unit_serializer = lambda x: str(x.value)
 
 
@@ -78,9 +84,14 @@ class MonitorSpec(NamedTuple):
     expire: Optional[int] = None
     default: Optional[Any] = None
 
+    fundamental_type: Optional[TimeSeriesFundamentalType] = None
     preprocessor: Optional[Union[List[Callable[[Any], Any]], Callable[[Any], Any]]] = None
     serializer: Optional[Callable[[Any], str]] = None
     deserializer: Optional[Callable[[str], Any]] = None
+    is_cumulative: Optional[bool] = False
+    is_constant: Optional[bool] = False
+    is_continuous: Optional[bool] = True
+    is_monotonic: Optional[bool] = False
 
     export_name: Optional[str] = None
     export_level: Optional[MonitorExportLevel] = MonitorExportLevel.NEVER
@@ -88,7 +99,7 @@ class MonitorSpec(NamedTuple):
 
     publish_frequency: Optional[MonitorPublishFrequency] = MonitorPublishFrequency.ONCHANGE
     publish_period: Optional[int] = 1800
-    publish_measurement: Optional[Union[str, Callable[str, str]]] = lambda x: x
+    publish_measurement: Optional[Union[str, Callable[[str], str]]] = lambda x: x
 
     @property
     def keep_hot(self):
@@ -100,6 +111,12 @@ class MonitorSpec(NamedTuple):
 
     def publish_name(self):
         return self.export_name or self.path
+
+    def measurement_name(self, name):
+        if isinstance(self.publish_measurement, str):
+            return self.publish_measurement
+        else:
+            return self.publish_measurement(name)
 
     def get_serializer(self):
         if self.serializer:
@@ -118,3 +135,59 @@ class MonitorSpec(NamedTuple):
         if self.deserializer == bool:
             return bool_parser
         return self.deserializer
+
+    def get_fundamental_type(self):
+        if self.fundamental_type:
+            return self.fundamental_type
+        else:
+            if isclass(self.deserializer):
+                if issubclass(self.deserializer, bool):
+                    return TimeSeriesFundamentalType.BOOLEAN
+                elif issubclass(self.deserializer, (Number, NumericalUnitBase)):
+                    return TimeSeriesFundamentalType.NUMERIC
+
+    def get_preferred_exporter(self):
+        fundamental_type = self.get_fundamental_type()
+        if fundamental_type is not TimeSeriesFundamentalType.NUMERIC:
+            return TimeSeriesExporter.CHANGES_ONLY
+        else:
+            if self.is_constant:
+                return TimeSeriesExporter.CHANGES_ONLY
+            if self.is_monotonic:
+                return TimeSeriesExporter.DISCONTINUITIES_ONLY
+            if self.is_cumulative:
+                return TimeSeriesExporter.WINDOWED_SUMMATION
+            if self.is_continuous:
+                return TimeSeriesExporter.WINDOWED_MEAN
+        raise ValueError(f"No preferred exported found for {self.publish_name()}")
+
+    def render(self):
+        # TODO These names may need to use better terminology
+        # is_cumulative:
+        #   Adding up adjacent data points is usually meaningful.
+        #   Downsampling should use sum aggregation instead of mean.
+        # is_constant:
+        #   Generally (but not always) a constant. It often might not make sense to
+        #   plot these unless to provide level markers for associated non-constant monitors.
+        #   Downsampling of these should use preferably use CHANGES_ONLY type processors.
+        # is_continuous:
+        #   Underlying monitor data is usually continuous and interpolation between consecutive
+        #   data points is probably meaningful. Instead of interpolation, however, we simply
+        #   fill the last known value until a new one turns up. For non-continuous datasets,
+        #   such intermediate values will be null.
+        # is_monotonic:
+        #   Underlying monitor data is fundamentally monotonic. Generally applied to monitors
+        #   which are linear with time or whose rate of change is less important than points
+        #   at which monotonicity is broken.
+        return {
+            'publish_name': self.publish_name(),
+            'publish_frequency': self.publish_frequency,
+            'publish_measurement': self.measurement_name(self.publish_name()),
+            'export_level': self.export_level,
+            'fundamental_type': self.get_fundamental_type(),
+            'is_dynamic_container': self.multiple_container is not None,
+            'is_cumulative': self.is_cumulative,
+            'is_constant': self.is_constant,
+            'is_continuous': self.is_continuous,
+            'is_monotonic': self.is_monotonic,
+        }
