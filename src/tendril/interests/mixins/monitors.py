@@ -259,6 +259,7 @@ class InterestMonitorsMixin(InterestMixinBase):
         namespace = f'im:{self.id}'
         cache_keys = transit.find_keys(namespace=namespace, pattern=spec.path)
         keys = []
+        prefix = ''
         for cache_key in cache_keys:
             if b'*' in cache_key:
                 continue
