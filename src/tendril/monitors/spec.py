@@ -84,6 +84,8 @@ class MonitorSpec(NamedTuple):
     expire: Optional[int] = None
     default: Optional[Any] = None
 
+    localization_from_hierarchy: Optional[bool] = True
+
     fundamental_type: Optional[TimeSeriesFundamentalType] = None
     preprocessor: Optional[Union[List[Callable[[Any], Any]], Callable[[Any], Any]]] = None
     serializer: Optional[Callable[[Any], str]] = None

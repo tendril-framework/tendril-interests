@@ -76,7 +76,7 @@ class InterestMonitorsMixin(InterestMixinBase):
 
     def _monitor_get_publish_loc(self, spec, name=None, for_read=False):
         tags = {}
-        if not for_read:
+        if not for_read and spec.localization_from_hierarchy:
             if hasattr(self, 'cached_localizers'):
                 localizers = {k: v['name'] for k, v in self.cached_localizers().items()}
                 tags.update(localizers)
@@ -121,6 +121,7 @@ class InterestMonitorsMixin(InterestMixinBase):
 
     async def monitor_write(self, spec: MonitorSpec, value,
                             name=None, timestamp=None):
+        logger.warning(f"Trying to publish to {spec.publish_name()}")
         if spec.keep_hot:
             # Publish to cache
             kwargs = self._monitor_get_cache_loc(spec)

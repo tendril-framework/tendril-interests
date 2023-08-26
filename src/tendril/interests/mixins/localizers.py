@@ -38,7 +38,8 @@ class InterestLocalizersMixin(InterestMixinBase):
                     stub = candidate.export(export_level=ExportLevel.STUB)
                 else:
                     stub = candidate.export(export_level=ExportLevel.ID_ONLY)
-                if candidate.type_name not in rv.keys():
+                if (candidate.type_name not in rv.keys() and
+                        candidate.type_name != self.type_name):
                     rv[candidate.type_name] = stub
                     continue
                 idx = 1
