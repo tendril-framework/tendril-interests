@@ -40,6 +40,7 @@ core_dependencies = [
     'tendril-utils-types',
     'tendril-connector-rabbitmq',
     'tendril-connector-influxdb',
+    'tendril-apiserver-core',  # Need this because of HTTPCodedException import which are otherwise unused. Cleanup instead.
 ]
 
 install_requires = core_dependencies + ['wheel']
