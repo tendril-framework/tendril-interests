@@ -4,6 +4,7 @@ import time
 import re
 import json
 from pprint import pprint
+from pydantic import Field
 
 from os.path import commonprefix
 from fnmatch import fnmatch
@@ -46,7 +47,7 @@ class MonitorQueryItemTModel(TendrilTBaseModel):
 
 
 class MonitorsQueryTModel(TendrilTBaseModel):
-    time_span: QueryTimeSpanTModel = QueryTimeSpanTModel()
+    time_span: QueryTimeSpanTModel = Field(default_factory=QueryTimeSpanTModel)
     monitors: Optional[List[Union[str, MonitorQueryItemTModel]]]
 
 
