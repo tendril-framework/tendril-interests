@@ -122,7 +122,6 @@ class InterestMonitorsMixin(InterestMixinBase):
 
     async def monitor_write(self, spec: MonitorSpec, value,
                             name=None, timestamp=None):
-        logger.warning(f"Trying to publish to {spec.publish_name()}")
         if spec.keep_hot:
             # Publish to cache
             kwargs = self._monitor_get_cache_loc(spec)
