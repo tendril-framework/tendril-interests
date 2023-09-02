@@ -33,6 +33,7 @@ core_dependencies = [
     'tendril-auth',
     'networkx',
     'rich',
+    'pytz',
     'polars',
     'makefun',
     'asgiref',
