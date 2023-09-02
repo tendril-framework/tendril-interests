@@ -3,7 +3,8 @@
 import time
 import re
 import json
-from pprint import pprint
+import pytz
+from datetime import datetime
 from pydantic import Field
 
 from os.path import commonprefix
@@ -38,6 +39,7 @@ from tendril.utils import log
 logger = log.get_logger(__name__, log.DEFAULT)
 
 
+local_tz = pytz.timezone("Asia/Kolkata")
 idx_rex = re.compile(r"^(?P<key>\S+)\[(?P<idx>\d+)\]")
 
 
@@ -98,19 +100,50 @@ class InterestMonitorsMixin(InterestMixinBase):
 
     @with_mq_client
     async def monitor_publish(self, spec: MonitorSpec, value,
-                              name=None, timestamp=None, mq=None):
+                              name=None, timestamp=None,
+                              additional_localizers=None,
+                              mq=None):
         if not timestamp:
             timestamp = time.clock_gettime_ns(time.CLOCK_REALTIME)
+        elif isinstance(timestamp, datetime):
+            # If a timestamp is provided, it should be timezone-aware. If it isn't, we
+            # assume it is in UTC.
+            if timestamp.tzinfo is None or timestamp.tzinfo.utcoffset(timestamp) is None:
+                timestamp = timestamp.replace(tzinfo=pytz.utc)
+            # We actually store in local time. This is something that should be corrected.
+            # It is as it is now for legacy reasons. Specifically, to be consistent with
+            # the naive use of time.clock_gettime_ns above, and all the downstream users of
+            # monitor data across instances
+            timestamp = timestamp.astimezone(local_tz)
+            timestamp = int(timestamp.timestamp() * (10 ** 9))
+        elif isinstance(timestamp, int):
+            # Something further up the chain probably used time.clock_gettime_ns. This is
+            # treated as a ns precision timestamp in localtime.
+            pass
+        else:
+            logger.warn(f"Got timestamp '{timestamp}' of type {type(timestamp)} for monitor "
+                        f"'{spec.publish_name()}'. This is likely incorrect.")
         if not name:
             name = spec.publish_name()
         bucket = 'im'
 
         measurement, tags = self._monitor_get_publish_loc(spec, name)
 
+        if additional_localizers:
+            tags.update(additional_localizers)
+
         # We don't use the usual serializers here. Instead, we rely on the DecimalEncoder
         # This is another significant source of fragility and may need to be improved.
         # value = spec.get_serializer()(value)
-        fields = {'value': value}
+        if isinstance(spec.structure, str):
+            fields = {spec.structure: value}
+        else:
+            raise NotImplementedError("We don't currently only support scalar, independent datapoints")
+
+        if spec.flatten_cardinality:
+            for key in spec.flatten_cardinality:
+                if key in tags.keys():
+                    fields[key] = tags.pop(key)
 
         msg = json.dumps({'measurement': measurement,
                        'tags': tags,
@@ -121,7 +154,8 @@ class InterestMonitorsMixin(InterestMixinBase):
         await mq.publish(key, msg)
 
     async def monitor_write(self, spec: MonitorSpec, value,
-                            name=None, timestamp=None):
+                            name=None, timestamp=None,
+                            additional_localizers=None):
         if spec.keep_hot:
             # Publish to cache
             kwargs = self._monitor_get_cache_loc(spec)
@@ -145,8 +179,8 @@ class InterestMonitorsMixin(InterestMixinBase):
                 if old_value != value:
                     publish = True
         if publish:
-            await self.monitor_publish(spec, value,
-                                       name=name, timestamp=timestamp)
+            await self.monitor_publish(spec, value, name=name, timestamp=timestamp,
+                                       additional_localizers=additional_localizers)
 
 
     def monitor_report(self, monitor, value, timestamp=None,
