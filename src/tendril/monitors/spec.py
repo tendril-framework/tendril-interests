@@ -4,6 +4,8 @@ import json
 from collections.abc import Mapping, Iterable
 from numbers import Number
 from decimal import Decimal
+from datetime import timedelta
+from datetime import datetime
 from inspect import isclass
 from enum import IntEnum
 from typing import Any
@@ -57,6 +59,10 @@ class DecimalEncoder(json.JSONEncoder):
             obj = obj.value
         if isinstance(obj, Decimal):
             return f'{obj:f}'  # using normalize() gets rid of trailing 0s, using ':f' prevents scientific notation
+        if isinstance(obj, timedelta):
+            return obj.total_seconds()
+        if isinstance(obj, datetime):
+            return obj.timestamp()
         return super().encode(obj)
 
 
@@ -85,6 +91,8 @@ class MonitorSpec(NamedTuple):
     default: Optional[Any] = None
 
     localization_from_hierarchy: Optional[bool] = True
+    flatten_cardinality: Optional[tuple] = ()
+    structure: Optional[Any] = 'value'
 
     fundamental_type: Optional[TimeSeriesFundamentalType] = None
     preprocessor: Optional[Union[List[Callable[[Any], Any]], Callable[[Any], Any]]] = None
