@@ -22,6 +22,10 @@ from tendril.core.tsdb.constants import TimeSeriesExporter
 from tendril.core.mq.aio import with_mq_client
 from tendril.core.tsdb.aio import tsdb_execute_query_plan
 
+# TODO Replace with a query planner
+from tendril.connectors.influxdb.query.schema import DistinctTagsFluxQueryBuilder
+from tendril.connectors.influxdb.aio import influxdb_execute_query
+
 from tendril.monitors.spec import MonitorSpec
 from tendril.monitors.spec import MonitorPublishFrequency
 from tendril.monitors.spec import DecimalEncoder
@@ -384,7 +388,7 @@ class InterestMonitorsMixin(InterestMixinBase):
                            exporter: TimeSeriesExporter):
         measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
 
-        fields = ['value']
+        fields = [spec.structure]
         query = TimeSeriesQueryItemTModel(
             domain='monitors',
             export_name=name,
@@ -393,8 +397,21 @@ class InterestMonitorsMixin(InterestMixinBase):
             tags=tags,
             fields=fields,
             exporter=exporter,
+            include_ends=spec.is_continuous,
         )
         return query
+
+    def _monitor_get_dynamic_keys_published(self, name, spec, time_span=None):
+        measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
+        tags = { k:v for k, v in tags.items() if v != '*' }
+        tag_query = DistinctTagsFluxQueryBuilder(
+            bucket='monitors',
+            measurement=measurement,
+            tag=spec.multiple_discriminators[0],
+            filters=tags,
+            time_span=time_span,
+        )
+        return tag_query
 
     @require_permission('read', strip_auth=False, required=False)
     async def monitors_export_historical(self, query: MonitorsQueryTModel,
@@ -420,8 +437,15 @@ class InterestMonitorsMixin(InterestMixinBase):
             if not exporter:
                 exporter = spec.get_preferred_exporter()
             if spec.multiple_container and '*' in target:
-                prefix, keys = self._monitor_get_dynamic_keys(spec)
-                for key in keys:
+                published_keys_query = (
+                    self._monitor_get_dynamic_keys_published(target, spec, time_span=query.time_span))
+                published_keys = await influxdb_execute_query(published_keys_query)
+                published_keys = published_keys["data"]
+                if target.endswith('*'):
+                    prefix = target[:-1]
+                else:
+                    raise NotImplementedError("We only support multiple container targets of type '<static>.*' here!")
+                for key in published_keys:
                     exportable.append({'name': f"{prefix}{key}",
                                        'spec': spec,
                                        'exporter': exporter})

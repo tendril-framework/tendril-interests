@@ -86,13 +86,16 @@ class MonitorPublishFrequency(IntEnum):
 
 class MonitorSpec(NamedTuple):
     path: str
-    multiple_container: Optional[Type] = None
     expire: Optional[int] = None
     default: Optional[Any] = None
+
+    multiple_container: Optional[Type] = None
+    multiple_discriminators: Optional[List[str]] = ['identifier']
 
     localization_from_hierarchy: Optional[bool] = True
     flatten_cardinality: Optional[tuple] = ()
     structure: Optional[Any] = 'value'
+    drill_down: Optional[List] = []
 
     fundamental_type: Optional[TimeSeriesFundamentalType] = None
     preprocessor: Optional[Union[List[Callable[[Any], Any]], Callable[[Any], Any]]] = None
