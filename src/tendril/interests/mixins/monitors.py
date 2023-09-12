@@ -87,6 +87,7 @@ class InterestMonitorsMixin(InterestMixinBase):
             if hasattr(self, 'cached_localizers'):
                 localizers = {k: v['name'] for k, v in self.cached_localizers().items()}
                 tags.update(localizers)
+                tags.update(localizers)
         tags[self.type_name] = str(self.name)
 
         measurement = spec.measurement_name(name)
@@ -391,7 +392,6 @@ class InterestMonitorsMixin(InterestMixinBase):
                            time_span:QueryTimeSpanTModel,
                            exporter: TimeSeriesExporter):
         measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
-        logger.debug(f"Using {measurement}, {tags}")
         fields = [spec.structure]
         query = TimeSeriesQueryItemTModel(
             domain='monitors',
