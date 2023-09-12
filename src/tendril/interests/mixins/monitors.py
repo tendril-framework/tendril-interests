@@ -191,6 +191,14 @@ class InterestMonitorsMixin(InterestMixinBase):
             await self.monitor_publish(spec, value, name=name, timestamp=timestamp,
                                        additional_localizers=additional_localizers)
 
+    async def monitor_report_async(self, monitor, value, timestamp=None):
+        spec = self.monitor_get_spec(monitor)
+        if not spec:
+            return
+        if not timestamp:
+            timestamp = time.clock_gettime_ns(time.CLOCK_REALTIME)
+        await self.monitor_write(spec, value, name=monitor,
+                                 timestamp=timestamp)
 
     def monitor_report(self, monitor, value, timestamp=None,
                        background_tasks=None):
