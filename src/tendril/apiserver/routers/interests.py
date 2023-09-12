@@ -62,6 +62,22 @@ async def interest_stubs(id: int,
         return interest.export(export_level=ExportLevel.STUB, session=session)
 
 
+@interests_router.get("/by_name/{name}/stub", response_model=interest_stub_tmodel)
+async def interest_stub_by_name(name: str,
+                                user: AuthUserModel = auth_spec()):
+    with get_session() as session:
+        interest = get_interest(name=name, session=session)
+        interest = rewrap_interest(interest)
+
+        # We can't expect the user to have permissions on the interest, for
+        # instance when looking at platform information from the content
+        # interest's perspective for approvals. The stub will have to be
+        # treated as public (any logged in user).
+        # interest.export(auth_user=user, probe_only=True, session=session)
+        return interest.export(export_level=ExportLevel.STUB, session=session)
+
+
+
 @interests_router.post("/memberships", response_model=UserMembershipsTModel)
 async def get_user_memberships(user: AuthUserModel = auth_spec(),
                                include_delegated: bool = False,
