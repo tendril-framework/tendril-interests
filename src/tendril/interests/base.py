@@ -412,6 +412,14 @@ class InterestBase(InterestExportMixin):
         return rv
 
     @with_db
+    @require_permission('read_children', strip_auth=False, required=False)
+    def descendents(self, child_type=None, auth_user=None, session=None):
+        rv = self.children(child_type=child_type, auth_user=auth_user, session=session)
+        for child in self.children(auth_user=auth_user, session=session):
+            rv += child.descendents(child_type=child_type, auth_user=auth_user, session=session)
+        return rv
+
+    @with_db
     @require_permission('read_children', strip_auth=False, required=False,
                         specifier='child_type', preprocessor=normalize_type_name)
     def children(self, child_type=None, limited=None, auth_user=None, session=None):
