@@ -115,6 +115,12 @@ class MonitorSpec(NamedTuple):
     publish_measurement: Optional[Union[str, Callable[[str], str]]] = lambda x: x
 
     @property
+    def normalized_structure(self):
+        if isinstance(self.structure, str):
+            return [self.structure]
+        raise NotImplementedError("Non-scalar measurements are not presently supported")
+
+    @property
     def keep_hot(self):
         if self.export_level < MonitorExportLevel.NEVER:
             return True

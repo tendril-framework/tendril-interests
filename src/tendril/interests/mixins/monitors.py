@@ -94,8 +94,12 @@ class InterestMonitorsMixin(InterestMixinBase):
             parts = name.split('.')
             if measurement in parts:
                 parts.remove(measurement)
+            for value_key in spec.normalized_structure:
+                if value_key in parts:
+                    parts.remove(value_key)
             if len(parts) == 1:
-                tags['identifier'] = parts[0]
+                # TODO Multiple discriminators here will break
+                tags[spec.multiple_discriminators[0]] = parts[0]
             if len(parts) > 1:
                 raise ValueError(f"Don't know how to construct an influxdb "
                                  f"string from parts {parts}")
@@ -387,7 +391,7 @@ class InterestMonitorsMixin(InterestMixinBase):
                            time_span:QueryTimeSpanTModel,
                            exporter: TimeSeriesExporter):
         measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
-
+        logger.debug(f"Using {measurement}, {tags}")
         fields = [spec.structure]
         query = TimeSeriesQueryItemTModel(
             domain='monitors',
@@ -404,9 +408,15 @@ class InterestMonitorsMixin(InterestMixinBase):
     def _monitor_get_dynamic_keys_published(self, name, spec, time_span=None):
         measurement, tags = self._monitor_get_publish_loc(spec, name, for_read=True)
         tags = { k:v for k, v in tags.items() if v != '*' }
+        all_fields = spec.normalized_structure
+        if len(all_fields) == 1:
+            wanted_field = spec.normalized_structure[0]
+        else:
+            raise NotImplementedError("We only presently support scalar measurements")
         tag_query = DistinctTagsFluxQueryBuilder(
             bucket='monitors',
             measurement=measurement,
+            field = wanted_field,
             tag=spec.multiple_discriminators[0],
             filters=tags,
             time_span=time_span,
@@ -436,11 +446,14 @@ class InterestMonitorsMixin(InterestMixinBase):
                 pass
             if not exporter:
                 exporter = spec.get_preferred_exporter()
+            logger.debug(f"{target}, {spec.multiple_container}")
             if spec.multiple_container and '*' in target:
+                logger.debug(f"Searching for published keys for {target}")
                 published_keys_query = (
                     self._monitor_get_dynamic_keys_published(target, spec, time_span=query.time_span))
                 published_keys = await influxdb_execute_query(published_keys_query)
                 published_keys = published_keys["data"]
+                logger.debug(f"Found {published_keys}")
                 if target.endswith('*'):
                     prefix = target[:-1]
                 else:
