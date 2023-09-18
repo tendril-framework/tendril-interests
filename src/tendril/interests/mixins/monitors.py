@@ -444,7 +444,7 @@ class InterestMonitorsMixin(InterestMixinBase):
             monitors = query.monitors
         for target in monitors:
             if isinstance(target, MonitorQueryItemTModel):
-                exporter = target.export_processor
+                exporter = target.exporter
                 target = target.name
             else:
                 exporter = None
