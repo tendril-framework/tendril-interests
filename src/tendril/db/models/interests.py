@@ -24,7 +24,7 @@ from tendril.utils.db import TimestampMixin
 from tendril.authn.db.mixins import UserMixin
 
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 class InterestAssociationModel(DeclBase, BaseMixin, TimestampMixin):

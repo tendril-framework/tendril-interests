@@ -39,7 +39,7 @@ from .mixins.export import InterestExportMixin
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 class InterestBaseCreateTModel(TendrilTBaseModel):

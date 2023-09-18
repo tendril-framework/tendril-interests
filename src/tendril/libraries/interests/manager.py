@@ -8,7 +8,7 @@ from tendril.db.controllers.interests import get_interest
 from tendril.common.interests.exceptions import InterestNotFound
 from tendril.utils.versions import get_namespace_package_names
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEBUG)
+logger = log.get_logger(__name__)
 
 
 class InterestLibraryManager(object):

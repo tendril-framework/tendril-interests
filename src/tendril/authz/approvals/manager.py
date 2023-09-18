@@ -4,7 +4,7 @@ import importlib
 
 from tendril.utils.versions import get_namespace_package_names
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 class ApprovalTypesManager(object):

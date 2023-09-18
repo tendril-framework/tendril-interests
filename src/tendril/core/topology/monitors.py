@@ -2,7 +2,7 @@
 
 from tendril.core.mq.aio import with_mq_client
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 #TODO Create the exchange as well
 

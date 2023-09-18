@@ -22,7 +22,7 @@ from tendril.utils.types.unitbase import NumericalUnitBase
 from tendril.utils.types.unitbase import UnitBase
 from tendril.utils import log
 
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 unit_serializer = lambda x: str(x.value)
 
 

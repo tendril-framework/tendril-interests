@@ -22,7 +22,7 @@ from tendril.common.interests.exceptions import InterestNotFound
 
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 class GenericInterestLibrary(object):

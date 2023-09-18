@@ -27,7 +27,7 @@ from tendril.config import INTERESTS_API_ENABLED
 
 from tendril.utils.db import get_session
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 interests_router = APIRouter(prefix='/interests',

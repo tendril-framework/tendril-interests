@@ -11,7 +11,7 @@ from .base import InterestMixinBase
 from tendril.utils.db import with_db
 from tendril.common.interests.representations import ExportLevel
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 # TODO Use the interest stub model here.

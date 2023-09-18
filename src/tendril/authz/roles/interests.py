@@ -10,7 +10,7 @@ from tendril.common.states import LifecycleStatus
 from tendril.common.interests.exceptions import InterestStateException
 from tendril.common.interests.exceptions import AuthorizationRequiredError
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 class MembershipInfoTModel(TendrilTBaseModel):

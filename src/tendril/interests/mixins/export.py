@@ -14,7 +14,7 @@ from tendril.authz.roles.interests import require_permission
 from .base import InterestMixinBase
 from tendril.utils.db import with_db
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEBUG)
+logger = log.get_logger(__name__)
 
 
 class InterestIdOnlyTModel(TendrilTBaseModel):

@@ -22,7 +22,7 @@ Interests Configuration Options
 
 from tendril.utils.config import ConfigOption
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 depends = ['tendril.config.core']
 

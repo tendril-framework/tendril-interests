@@ -40,7 +40,7 @@ from tendril.config import INFLUXDB_MONITORS_TOKEN
 
 from .base import InterestMixinBase
 from tendril.utils import log
-logger = log.get_logger(__name__, log.DEFAULT)
+logger = log.get_logger(__name__)
 
 
 local_tz = pytz.timezone("Asia/Kolkata")
