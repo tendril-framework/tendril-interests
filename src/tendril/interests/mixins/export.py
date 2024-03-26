@@ -150,6 +150,7 @@ class InterestExportMixin(InterestMixinBase):
                **kwargs):
 
         rv = {'id': self.id}
+        # TODO Add timestamps to this
         if export_level >= ExportLevel.STUB:
             rv.update({
                 'type': self.type_name,
@@ -158,6 +159,7 @@ class InterestExportMixin(InterestMixinBase):
                 'status': self.status
             })
 
+        # TODO This should use the level spec in additional fields
         if export_level >= ExportLevel.NORMAL:
             for field in self.additional_fields + self.additional_export_fields:
                 if isinstance(field, tuple):

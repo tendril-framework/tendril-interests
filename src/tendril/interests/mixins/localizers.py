@@ -62,5 +62,6 @@ class InterestLocalizersMixin(InterestMixinBase):
         if hasattr(super(), 'export'):
             rv.update(super().export(export_level=export_level, session=session,
                                      auth_user=auth_user, **kwargs))
-        rv['localizers'] = self.localizers(export_level=ExportLevel.ID_ONLY, session=session)
+        if export_level > ExportLevel.ID_ONLY:
+            rv['localizers'] = self.localizers(export_level=ExportLevel.ID_ONLY, session=session)
         return rv
