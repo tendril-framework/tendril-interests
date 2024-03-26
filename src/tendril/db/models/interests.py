@@ -72,6 +72,11 @@ class InterestModel(DeclBase, BaseMixin, TimestampMixin):
                             foreign_keys='InterestApprovalModel.context_id')
 
     @declared_attr
+    def policies(cls):
+        return relationship("InterestPolicyModel", back_populates='interest', lazy='select',
+                            foreign_keys="InterestPolicyModel.interest_id")
+
+    @declared_attr
     def children(cls):
         return relationship("InterestModel", secondary="InterestAssociation",
                             primaryjoin="InterestModel.id == InterestAssociationModel.parent_id",

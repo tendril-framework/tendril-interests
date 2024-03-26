@@ -1,10 +1,6 @@
 
 
-from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.exc import MultipleResultsFound
-
-from tendril.interests.base import InterestBase
 from tendril.db.controllers.interests import preprocess_user
 from tendril.db.controllers.interests import preprocess_interest
 from tendril.db.controllers.interests import get_interest_role
