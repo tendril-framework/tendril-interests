@@ -41,11 +41,11 @@ class InterestPolicyRouterGenerator(ApiRouterGenerator):
             return item.policy_get(name=name, auth_user=user, session=session)
 
     async def set_policy(self, _request: Request, id: int, name: str,
-                         policy: Annotated[Any, Body()],
+                         policy: Annotated[Any, Body()] = None,
                          user: AuthUserModel = auth_spec()):
         with get_session() as session:
             item = self._actual.item(id, session=session)
-            return item.policy_set(name=name, value=policy, auth_user=user, session=session)
+            return item.policy_set(name=name, policy=policy, auth_user=user, session=session)
 
     def generate(self, name):
         desc = f'Policy API for {titleize(singularize(name))} Interests'

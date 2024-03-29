@@ -46,6 +46,7 @@ class PolicyTemplatesManager(object):
     def finalize(self):
         for policy_type in self._templates.values():
             logger.debug(f"Registering Policy Type '{policy_type.name}'")
+            # TODO This prevents manhole from starting.
             register_policy_type(policy_type)
         self.finalized = True
 

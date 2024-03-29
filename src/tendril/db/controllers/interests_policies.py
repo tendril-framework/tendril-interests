@@ -94,3 +94,19 @@ def upsert_policy(policy_type, interest, user, policy, session=None):
     session.add(policy_obj)
     session.flush()
     return policy_obj
+
+
+@with_db
+def clear_policy(policy_type, interest, session=None):
+    policy_type = preprocess_policy_type(policy_type, session=session)
+    interest = preprocess_interest(interest, session=session)
+
+    try:
+        existing = get_policy(policy_type=policy_type,
+                              interest=interest, required=True,
+                              session=session)
+        session.delete(existing)
+        session.flush()
+        return existing
+    except NoResultFound:
+        pass

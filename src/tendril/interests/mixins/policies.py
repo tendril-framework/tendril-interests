@@ -10,6 +10,7 @@ from tendril.authz.roles.interests import require_permission
 from tendril.common.states import LifecycleStatus
 from tendril.db.controllers.interests_policies import get_policy
 from tendril.db.controllers.interests_policies import upsert_policy
+from tendril.db.controllers.interests_policies import clear_policy
 
 from tendril.common.interests.exceptions import AuthorizationRequiredError
 
@@ -100,6 +101,10 @@ class InterestPoliciesMixin(InterestMixinBase):
         else:
             raise AuthorizationRequiredError(user_id=auth_user, action=f"policy_set:{name}",
                                              interest_id=self.id, interest_name=self.name)
+
+        if not policy:
+            result = clear_policy(policy_type=name, interest=self.id, session=session)
+            return result
 
         result = upsert_policy(policy_type=name, interest=self.id, user=auth_user,
                                policy=spec.schema(**policy).dict(), session=session)
