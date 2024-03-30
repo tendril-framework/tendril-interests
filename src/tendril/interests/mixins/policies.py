@@ -62,7 +62,6 @@ class InterestPoliciesMixin(InterestMixinBase):
             return None
 
         for ancestor in self.ancestors(session=session):
-            logger.info(f"Checking {ancestor}")
             try:
                 policy = ancestor.policy_get(name, session=session)
             except AttributeError:
