@@ -50,16 +50,18 @@ class InterestPoliciesMixin(InterestMixinBase):
 
     @with_db
     @require_permission('read_policies', strip_auth=True, required=False)
-    def policy_get(self, name, session=None):
+    def policy_get(self, name, resolve_ancestors=True, session=None):
         policy = get_policy(policy_type=name, interest=self.id, session=session)
         if policy:
             return policy.policy
 
+        if not resolve_ancestors:
+            return None
+
         try:
             spec: PolicyBase = self.policies_types()[name]
         except KeyError:
-            logger.error(f"Could not file policy type {name} for interest type {self.type_name}. "
-                         f"This should not expected to happen.")
+            logger.warn(f"Could not find policy type '{name}' for interest type '{self.type_name}'")
             return None
 
         inherit = self._policy_context_check_inherits(spec.context_spec)
@@ -69,7 +71,7 @@ class InterestPoliciesMixin(InterestMixinBase):
 
         for ancestor in self.ancestors(session=session):
             try:
-                policy = ancestor.policy_get(name, session=session)
+                policy = ancestor.policy_get(name, resolve_ancestors=False, session=session)
             except AttributeError:
                 continue
             if policy:
