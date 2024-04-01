@@ -1,6 +1,5 @@
 
 
-import functools
 from pydantic.schema import schema
 from inflection import titleize
 
@@ -23,7 +22,6 @@ class PolicyBase(object):
         return
 
     @classmethod
-    @functools.lru_cache
     def can_assign_to(cls):
         rv = {'interest_types':set()}
         for spec in cls.context_spec:
@@ -36,7 +34,6 @@ class PolicyBase(object):
         return rv
 
     @classmethod
-    @functools.lru_cache
     def applies_to(cls):
         rv = {'interest_types': set()}
         for spec in cls.context_spec:
@@ -45,7 +42,6 @@ class PolicyBase(object):
         return rv
 
     @classmethod
-    @functools.lru_cache
     def title(cls):
         return titleize(cls.name + '_policy')
 
