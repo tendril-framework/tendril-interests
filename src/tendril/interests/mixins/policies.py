@@ -55,7 +55,13 @@ class InterestPoliciesMixin(InterestMixinBase):
         if policy:
             return policy.policy
 
-        spec: PolicyBase = self.policies_types()[name]
+        try:
+            spec: PolicyBase = self.policies_types()[name]
+        except KeyError:
+            logger.error(f"Could not file policy type {name} for interest type {self.type_name}. "
+                         f"This should not expected to happen.")
+            return None
+
         inherit = self._policy_context_check_inherits(spec.context_spec)
 
         if not inherit:
