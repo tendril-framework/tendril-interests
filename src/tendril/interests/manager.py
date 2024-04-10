@@ -140,8 +140,9 @@ class InterestManager(object):
 
     def _possible_type_parents(self, type_name):
         paths = networkx.all_simple_paths(self.type_tree, self._tree_root(), type_name)
+        paths = [list(x) for x in paths]
+        paths = [x for x in paths if len(x) > 1]
         parents = []
-        # TODO This fails on manhole?
         [parents.append(x[-2])
          for x in sorted(paths, key=lambda x: len(x), reverse=True)
          if x[-2] not in parents]
