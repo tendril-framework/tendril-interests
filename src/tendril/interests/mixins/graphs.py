@@ -21,9 +21,10 @@ class InterestGraphsMixin(InterestMixinBase):
         candidate_types = [x[0] for x in GRAFANA_TEAM_COMPOSITION]
         if self.type_name in candidate_types:
             return self
-        for candidate in self.ancestors():
-            if candidate.type_name in candidate_types:
-                return candidate
+        for candidate_type_name in candidate_types:
+            for candidate in self.ancestors():
+                if candidate.type_name == candidate_type_name:
+                    return candidate
 
     async def _graphs_get(self, team_id, folder_uid):
         response = {}
