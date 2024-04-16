@@ -40,7 +40,7 @@ core_dependencies = [
     'inflection',
     'deepdiff[optimize]',
     'tendril-utils-types',
-    'tendril-connector-rabbitmq',
+    'tendril-connector-rabbitmq>=0.2.0',
     'tendril-connector-influxdb',
     'tendril-connector-grafana',
     'tendril-apiserver-core',  # Need this because of HTTPCodedException import which are otherwise unused. Cleanup instead.

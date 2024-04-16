@@ -107,7 +107,7 @@ class InterestMonitorsMixin(InterestMixinBase):
 
         return measurement, tags
 
-    @with_mq_client
+    @with_mq_client()
     async def monitor_publish(self, spec: MonitorSpec, value,
                               name=None, timestamp=None,
                               additional_localizers=None,
