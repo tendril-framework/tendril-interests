@@ -13,6 +13,9 @@ from tendril.authn.users import AuthUserModel
 from tendril.libraries import interests
 from tendril.interests import type_spec
 from tendril.interests import interest_stub_tmodel
+from tendril.interests import possible_parents
+from tendril.interests import possible_ancestors
+from tendril.interests import possible_paths
 from tendril.common.states import LifecycleStatus
 
 from tendril.db.controllers.interests import get_interest
@@ -45,6 +48,21 @@ async def get_interest_libraries():
 @interests_router.get("/types")
 async def get_interest_types():
     return type_spec
+
+
+@interests_router.get("/possible_parents", response_model=Dict[str, List[str]])
+async def get_possible_parents():
+    return possible_parents
+
+
+@interests_router.get("/possible_ancestors", response_model=Dict[str, List[str]])
+async def get_possible_ancestors():
+    return possible_ancestors
+
+
+@interests_router.get("/possible_paths", response_model=Dict[str, List[List[str]]])
+async def get_possible_paths():
+    return possible_paths
 
 
 @interests_router.get("/{id}/stub", response_model=interest_stub_tmodel)
