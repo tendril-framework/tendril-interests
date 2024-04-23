@@ -99,16 +99,18 @@ class GenericInterestLibrary(object):
         raise NotImplementedError
 
     @with_db
-    def possible_parents(self, user=None, session=None):
+    def possible_parents(self, user=None, search_parent_types=None, first_only=False, session=None):
         parent_types = interests.possible_parents[self.type_name]
         if self.type_name in self.interest_class.model.role_spec.allowed_children:
             parent_types.append(self.type_name)
+        if search_parent_types:
+            parent_types = [x for x in parent_types if x in search_parent_types]
         candidate_memberships = user_memberships(user_id=user, interest_types=parent_types,
                                                  session=session)
         candidate_interests = candidate_memberships.interests(
             filter_criteria=[('check_user_access', {'user': user, 'session': session,
                                                     'action': f'add_child:{self.type_name}'})],
-            sort_heuristics=[('type_name', parent_types)])
+            sort_heuristics=[('type_name', parent_types)], first_only=first_only)
         return candidate_interests
 
     @property

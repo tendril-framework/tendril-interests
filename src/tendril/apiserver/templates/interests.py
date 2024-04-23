@@ -4,10 +4,12 @@ from typing import List
 from typing import Dict
 from typing import Union
 from typing import Optional
+from typing import Annotated
 from inflection import singularize
 from inflection import titleize
 
 from fastapi import APIRouter
+from fastapi import Query
 from fastapi import Request
 from fastapi import Depends
 from fastapi import BackgroundTasks
@@ -108,6 +110,8 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         return rv
 
     async def find_possible_parents(self, request: Request,
+                                    search_parent_types : Annotated[list[str] | None, Query()] = None,
+                                    first_only: Optional[bool] = False,
                                     user: AuthUserModel = auth_spec(),
                                     export_level: Optional[ExportLevel] = ExportLevel.STUB.value):
         """
@@ -119,7 +123,10 @@ class InterestLibraryRouterGenerator(ApiRouterGenerator):
         - **user :* The requesting user, identified by the access token.
         """
         with get_session() as session:
-            result = self._actual.possible_parents(user=user, session=session)
+            result = self._actual.possible_parents(
+                search_parent_types=search_parent_types,
+                first_only=first_only, user=user, session=session
+            )
             return [x.export(auth_user=user, session=session,
                              export_level=export_level) for x in result]
 

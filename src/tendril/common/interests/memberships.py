@@ -101,12 +101,25 @@ class UserMembershipCollector(object):
         return interest_type(get_interest(id=iid, type=interest_type.model, session=session))
 
     @with_db
-    def interests(self, filter_criteria=None, sort_heuristics=None, session=None):
+    def interests(self, filter_criteria=None, sort_heuristics=None, first_only=False, session=None):
         if not self.df.select(polars.count()).item():
             return []
         i_itype = self.df.select(polars.col(['interest.id', 'type'])).unique()
         cand_interests = [self._get_interest(iid=iid, itype=type_name, session=session)
                           for iid, type_name in i_itype.rows()]
+
+        if first_only:
+            # This is a highly specific optimization for use cases where it is only needed to
+            # know _if_ there are any possible_parents accessible to the user. This is used by
+            # the frontend in places where we need to decide what options to provide. In most cases,
+            # the user will need the full list later on. So, if the underlying list processing
+            # can be optimized, this special case could perhaps be removed.
+            if not filter_criteria:
+                return [cand_interests[0]]
+            for cand_interest in cand_interests:
+                if all([getattr(cand_interest, acc)(**kw) for acc, kw in filter_criteria]):
+                    return [cand_interest]
+
         if filter_criteria:
             cand_interests = [x for x in cand_interests
                               if all([getattr(x, acc)(**kw) for acc, kw in filter_criteria])]
@@ -114,6 +127,7 @@ class UserMembershipCollector(object):
             for acc, reflist in sort_heuristics:
                 ranks = dict((value, idx) for idx, value in enumerate(reflist))
                 cand_interests = sorted(cand_interests, key=lambda x: ranks[x.type_name])
+
         return cand_interests
 
 
